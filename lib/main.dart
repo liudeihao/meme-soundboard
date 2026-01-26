@@ -66,7 +66,7 @@ class _MemeSoundboardAppState extends State<MemeSoundboardApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: '梗音盒',
+      title: '梗音效',
       debugShowCheckedModeBanner: false,
 
       // 亮色主题

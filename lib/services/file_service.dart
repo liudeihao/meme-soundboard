@@ -7,6 +7,7 @@ import 'package:uuid/uuid.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:palette_generator/palette_generator.dart';
+import 'package:intl/intl.dart';
 import '../models/sound_item.dart';
 import '../utils/app_constants.dart';
 
@@ -44,7 +45,7 @@ class FileService {
   Future<Directory> get _appDir async {
     final dir = await getApplicationDocumentsDirectory();
     final soundDir = Directory(
-      path.join(dir.path, AppConstants.appDataDir, AppConstants.soundsDir),
+      path.join(dir.path, AppConstants.appDataDir),
     );
     if (!await soundDir.exists()) {
       await soundDir.create(recursive: true);
@@ -56,59 +57,12 @@ class FileService {
   Future<Directory> get _thumbnailDir async {
     final dir = await getApplicationDocumentsDirectory();
     final thumbDir = Directory(
-      path.join(dir.path, AppConstants.appDataDir, AppConstants.imagesDir),
+      path.join(dir.path, AppConstants.appDataDir, 'thumbnails'),
     );
     if (!await thumbDir.exists()) {
       await thumbDir.create(recursive: true);
     }
     return thumbDir;
-  }
-
-  /// 从 assets 导入内置音效文件到应用私有目录
-  Future<SoundItem> importBuiltInSound(SoundItem builtInSound) async {
-    try {
-      final appDir = await _appDir;
-      final thumbDir = await _thumbnailDir;
-
-      // 复制音频文件
-      final audioAssetPath = 'assets/${builtInSound.soundPath}';
-      final audioData = await rootBundle.load(audioAssetPath);
-      final audioExtension = path.extension(builtInSound.soundPath);
-      final newAudioPath = path.join(
-        appDir.path,
-        '${builtInSound.id}$audioExtension',
-      );
-      final audioFile = File(newAudioPath);
-      await audioFile.writeAsBytes(audioData.buffer.asUint8List());
-
-      // 复制图片文件（如果存在）
-      String? newImagePath;
-      if (builtInSound.imagePath != null) {
-        try {
-          final imageAssetPath = 'assets/${builtInSound.imagePath}';
-          final imageData = await rootBundle.load(imageAssetPath);
-          final imageExtension = path.extension(builtInSound.imagePath!);
-          newImagePath = path.join(
-            thumbDir.path,
-            '${builtInSound.id}$imageExtension',
-          );
-          final imageFile = File(newImagePath);
-          await imageFile.writeAsBytes(imageData.buffer.asUint8List());
-        } catch (e) {
-          debugPrint('复制内置音效图片失败: $e');
-        }
-      }
-
-      // 返回修改后的音效对象（使用文件路径而不是 asset 路径）
-      return builtInSound.copyWith(
-        soundPath: newAudioPath,
-        imagePath: newImagePath ?? builtInSound.imagePath,
-        sourceType: SoundSourceType.file,
-      );
-    } catch (e) {
-      debugPrint('导入内置音效失败: $e');
-      rethrow;
-    }
   }
 
   /// 选择并导入音频文件
@@ -393,22 +347,6 @@ class FileService {
     }
   }
 
-  /// 导入 ZIP 包（包含 cover.jpg 和 sound.mp3）
-  Future<SoundItem?> importZipPackage() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['zip'],
-      allowMultiple: false,
-    );
-
-    if (result == null || result.files.isEmpty) return null;
-
-    // TODO: 解压 ZIP 并提取文件
-    // 这里需要添加 archive 包来处理 ZIP 文件
-
-    return null;
-  }
-
   /// 删除导入的文件
   Future<void> deleteImportedFile(SoundItem sound) async {
     try {
@@ -506,7 +444,7 @@ class FileService {
   }
 
   /// 保存音频文件到用户选择的位置
-  Future<String?> saveAudioToUserLocation(SoundItem sound) async {
+  Future<String?> saveAudioToUserLocation(SoundItem sound, {String? customName}) async {
     try {
       final sourcePath = sound.soundPath;
       final sourceFile = File(sourcePath);
@@ -518,34 +456,50 @@ class FileService {
 
       // 获取原始文件扩展名
       final extension = path.extension(sourcePath);
-      final suggestedName = '${sound.name}$extension';
+      final suggestedName = '${customName ?? sound.name}$extension';
 
-      // 让用户选择保存位置
-      final outputPath = await FilePicker.platform.saveFile(
-        dialogTitle: '保存音频文件',
-        fileName: suggestedName,
-        type: FileType.audio,
-      );
+      // 读取文件内容
+      final bytes = await sourceFile.readAsBytes();
 
-      if (outputPath == null) return null;
+      if (Platform.isAndroid || Platform.isIOS) {
+        // Android/iOS 需要使用 bytes 参数
+        final outputPath = await FilePicker.platform.saveFile(
+          dialogTitle: '保存音频文件',
+          fileName: suggestedName,
+          bytes: bytes,
+        );
 
-      // 确保输出路径有正确的扩展名
-      String finalPath = outputPath;
-      if (!finalPath.toLowerCase().endsWith(extension.toLowerCase())) {
-        finalPath = '$outputPath$extension';
+        if (outputPath == null) return null;
+        debugPrint('✅ 音频保存成功: $outputPath');
+        return outputPath;
+      } else {
+        // 桌面平台使用文件选择器
+        final outputPath = await FilePicker.platform.saveFile(
+          dialogTitle: '保存音频文件',
+          fileName: suggestedName,
+          type: FileType.audio,
+        );
+
+        if (outputPath == null) return null;
+
+        // 确保输出路径有正确的扩展名
+        String finalPath = outputPath;
+        if (!finalPath.toLowerCase().endsWith(extension.toLowerCase())) {
+          finalPath = '$outputPath$extension';
+        }
+
+        // 复制文件
+        await sourceFile.copy(finalPath);
+        debugPrint('✅ 音频保存成功: $finalPath');
+        return finalPath;
       }
-
-      // 复制文件
-      await sourceFile.copy(finalPath);
-      debugPrint('✅ 音频保存成功: $finalPath');
-      return finalPath;
     } catch (e) {
       debugPrint('❌ 保存音频文件失败: $e');
       rethrow;
     }
   }
 
-  /// 保存图片文件到用户选择的位置
+  /// 保存图片文件到应用文件夹（自动保存）
   Future<String?> saveImageToUserLocation(SoundItem sound) async {
     try {
       if (sound.imagePath == null) {
@@ -561,29 +515,24 @@ class FileService {
         return null;
       }
 
-      // 获取原始文件扩展名
-      final extension = path.extension(sourcePath);
-      final suggestedName = '${sound.name}$extension';
-
-      // 让用户选择保存位置
-      final outputPath = await FilePicker.platform.saveFile(
-        dialogTitle: '保存封面图片',
-        fileName: suggestedName,
-        type: FileType.image,
-      );
-
-      if (outputPath == null) return null;
-
-      // 确保输出路径有正确的扩展名
-      String finalPath = outputPath;
-      if (!finalPath.toLowerCase().endsWith(extension.toLowerCase())) {
-        finalPath = '$outputPath$extension';
+      // 获取图片保存目录（应用文件夹）
+      final appDir = await getApplicationDocumentsDirectory();
+      final imagesDir = Directory('${appDir.path}/Images');
+      
+      if (!await imagesDir.exists()) {
+        await imagesDir.create(recursive: true);
       }
 
+      // 使用音效名称 + 时间戳作为文件名
+      final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+      final extension = path.extension(sourcePath);
+      final fileName = '${sound.name}_$timestamp$extension';
+      final outputPath = '${imagesDir.path}/$fileName';
+
       // 复制文件
-      await sourceFile.copy(finalPath);
-      debugPrint('✅ 图片保存成功: $finalPath');
-      return finalPath;
+      await sourceFile.copy(outputPath);
+      debugPrint('✅ 图片保存成功: $outputPath');
+      return outputPath;
     } catch (e) {
       debugPrint('❌ 保存图片文件失败: $e');
       rethrow;

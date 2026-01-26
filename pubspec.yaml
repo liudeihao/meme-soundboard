@@ -47,6 +47,8 @@ dependencies:
   http: ^1.2.2
   window_manager: ^0.5.1
   win32: ^5.6.0
+  share_plus: ^10.1.4
+  intl: ^0.20.2
 
 dev_dependencies:
   flutter_test:
@@ -58,6 +60,8 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.13.1
+  flutter_native_splash: ^2.4.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -72,8 +76,7 @@ flutter:
 
   # 资源文件配置
   assets:
-    - assets/sounds/
-    - assets/images/
+    - assets/samples/    # 预制的示例音效包 (.msb 文件)
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
@@ -100,3 +103,27 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+
+  # Android 自适应图标
+  adaptive_icon_foreground: assets/shiba.png
+  adaptive_icon_background: "#fcc85f"
+
+  image_path_android: assets/shiba.png
+  # iOS 图标（会自动裁圆角，不能透明）
+  image_path_ios: assets/shiba.png
+
+
+flutter_native_splash:
+  color: "#fcc85f"
+  image: assets/shiba.png
+
+  android: true
+  ios: true
+
+  android_12:
+    color: "#fcc85f"
+    image: assets/shiba.png

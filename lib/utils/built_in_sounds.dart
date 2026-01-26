@@ -1,50 +1,19 @@
 import 'package:flutter/material.dart';
-import '../models/sound_item.dart';
-import 'package:uuid/uuid.dart';
+import 'app_constants.dart';
 
-/// 内置音效列表
-/// 这些音效会在应用首次运行时自动导入到数据库
-/// 它们和用户导入的音效等价，可以被编辑、删除或导出
+/// @deprecated 此类已被废弃，请使用 AppConstants 中的方法
+/// 保留此文件仅用于向后兼容，所有功能已迁移到 AppConstants
+/// 
+/// 示例音效现在通过预制的 .msb 文件提供，位于 assets/samples/ 目录
+/// 欢迎界面和设置中的"导入示例音效"功能现在使用 ImportExportService.importFromAsset()
 class BuiltInSounds {
-  static const _uuid = Uuid();
-
-  static List<SoundItem> get all => [
-    // 内置 Meme 音效
-    // 注意：soundPath 不要包含 'assets/' 前缀，因为 AssetSource 会自动添加
-    SoundItem(
-      id: _uuid.v4(),
-      name: 'Bruh 猫',
-      soundPath: 'sounds/Bruh猫.mp3',
-      imagePath: 'images/Bruh猫.png',
-      sourceType: SoundSourceType.asset,
-      category: '默认',
-      isFavorite: false,
-      dominantColor: const Color(0xFF8B5A00),
-      createdAt: DateTime.now(),
-    ),
-  ];
-
-  /// 分类对应的图标
+  /// @deprecated 使用 AppConstants.getCategoryIcon() 替代
   static IconData getCategoryIcon(String category) {
-    switch (category) {
-      case '全部':
-        return Icons.apps_rounded;
-      case '收藏':
-        return Icons.favorite_rounded;
-      default:
-        return Icons.folder_rounded; // 用户自定义分类使用文件夹图标
-    }
+    return AppConstants.getCategoryIcon(category);
   }
 
-  /// 分类对应的颜色
+  /// @deprecated 使用 AppConstants.getCategoryColor() 替代
   static Color getCategoryColor(String category) {
-    switch (category) {
-      case '全部':
-        return Colors.blue;
-      case '收藏':
-        return Colors.red;
-      default:
-        return Colors.blueGrey; // 用户自定义分类使用灰蓝色
-    }
+    return AppConstants.getCategoryColor(category);
   }
 }

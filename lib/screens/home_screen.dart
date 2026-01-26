@@ -7,13 +7,14 @@ import '../services/database_service.dart';
 import '../services/file_service.dart';
 import '../services/import_export_service.dart';
 import '../services/settings_service.dart';
-import '../utils/built_in_sounds.dart';
+import '../utils/app_constants.dart';
 import '../widgets/sound_button.dart';
 import '../widgets/category_selector.dart';
 import '../widgets/search_bar.dart' as custom;
 import '../widgets/add_sound_dialog.dart';
 import '../widgets/sound_bottom_sheet.dart';
 import 'settings_screen.dart';
+import 'export_manager_screen.dart';
 
 /// 主屏幕 - Bento Grid 布局的音效板
 class HomeScreen extends StatefulWidget {
@@ -39,8 +40,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   bool _isSelectionMode = false;
   Set<String> _selectedSoundIds = {}; // 使用音效ID跟踪选中项
 
-  // 用于撤销删除
-  SoundItem? _lastDeletedSound;
+  // 用于双击返回退出应用
+  DateTime? _lastBackPressTime;
 
   late AnimationController _fabAnimationController;
 
@@ -76,6 +77,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void _onPlayError() {
     final error = _audioService.playError.value;
     if (error != null && mounted) {
+      final bottomSheetHeight = _isSelectionMode && _selectedSoundIds.isNotEmpty ? 80.0 : 0.0;
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
@@ -87,6 +90,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
           backgroundColor: Colors.red.shade700,
           behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.fromLTRB(16, 0, 16, bottomSheetHeight + 16),
         ),
       );
     }
@@ -107,6 +111,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     try {
       debugPrint('========== 开始初始化音效 ==========');
 
+      // 确保示例音效包已复制到导出目录（静默执行，不影响启动）
+      _importExportService.copySamplePackToExportDir().then((success) {
+        if (success) {
+          debugPrint('示例音效包已准备就绪');
+        }
+      }).catchError((e) {
+        debugPrint('复制示例音效包失败（非致命错误）: $e');
+      });
+
       // 加载数据库中的音效
       var dbSounds = await _databaseService.getAllSounds();
       debugPrint('数据库中的音效数量: ${dbSounds.length}');
@@ -122,14 +135,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         dbSounds = [];
       }
 
-      // 检查内置音效
-      debugPrint('内置音效数量: ${BuiltInSounds.all.length}');
-      for (final sound in BuiltInSounds.all) {
-        debugPrint('内置音效: ${sound.name}, 路径: ${sound.soundPath}');
-      }
-
       // 检查数据库中的音效是否需要迁移分类
-      // 如果有分类为空的内置音效，需要迁移到"默认"分类
+      // 如果有分类为空的音效，需要迁移到"默认"分类
       final hasEmptyCategories = dbSounds.any((s) => s.category.isEmpty);
       if (hasEmptyCategories) {
         debugPrint('检测到旧的分类格式，正在迁移...');
@@ -147,12 +154,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       }
 
       // 检查数据库中的音效是否需要重新初始化
-      // 如果所有内置音效都是 asset 类型，说明需要从 assets 复制到私有目录
+      // 如果所有音效都是 asset 类型，说明是旧版本数据，需要清空
       final allAreAssets = dbSounds.every((s) => s.isAsset);
-      final needsReinitialization =
-          dbSounds.isNotEmpty && allAreAssets && BuiltInSounds.all.isNotEmpty;
-
-      if (needsReinitialization) {
+      if (dbSounds.isNotEmpty && allAreAssets) {
         debugPrint('检测到旧的内置音效格式，清空数据库...');
         await _databaseService.clearAllSounds();
         dbSounds = [];
@@ -263,13 +267,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     });
 
     // 显示反馈
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(newFavorite ? '已添加到收藏' : '已取消收藏'),
-        duration: const Duration(seconds: 1),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
+    _showSnackBar(
+      newFavorite ? '已添加到收藏' : '已取消收藏',
+      duration: const Duration(seconds: 1),
     );
   }
 
@@ -286,14 +286,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         onEdit: () => _editSound(sound),
         onDelete: () => _deleteSound(sound),
         onExport: () {
-          _exportSingleSound(sound);
+          // Navigator.pop 已在 SoundBottomSheet 内部处理
+          _showExportSingleDialog(sound);
         },
         onSaveAudio: () {
-          _saveAudioFile(sound);
+          // Navigator.pop 已在 SoundBottomSheet 内部处理
+          _showSaveAudioDialog(sound);
         },
         onSaveImage: sound.imagePath != null
             ? () {
-                _saveImageFile(sound);
+                // Navigator.pop 已在 SoundBottomSheet 内部处理
+                _showSaveImageDialog(sound);
               }
             : null,
         onShowDetails: () {
@@ -404,19 +407,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Future<void> _copyToClipboard(String text) async {
     await Clipboard.setData(ClipboardData(text: text));
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Row(
-            children: [
-              Icon(Icons.check_rounded, color: Colors.white),
-              SizedBox(width: 8),
-              Text('已复制到剪切板'),
-            ],
-          ),
-          duration: Duration(seconds: 1),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      _showSnackBarWithIcon('已复制到剪切板', Icons.check_rounded);
     }
   }
 
@@ -551,12 +542,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
 
     if (result == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('音效添加成功！'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      _showSnackBar('音效添加成功！');
     }
   }
 
@@ -647,28 +633,28 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   /// 删除音效
   Future<void> _deleteSound(SoundItem sound) async {
-    // 保存最后删除的音效用于撤销（注意：不立即删除文件）
-    _lastDeletedSound = sound;
-
-    // 先从数据库删除（用户可以在 SnackBar 显示期间撤销）
+    // 从数据库删除
     await _databaseService.deleteSound(sound.id);
+    
+    // 删除文件
+    await _fileService.deleteImportedFile(sound);
 
     setState(() {
       _allSounds.removeWhere((s) => s.id == sound.id);
       // 更新过滤后的列表
-      _filteredSounds = _allSounds.where((sound) {
+      _filteredSounds = _allSounds.where((s) {
         // 分类过滤
         bool categoryMatch = true;
         if (_selectedCategory == '收藏') {
-          categoryMatch = sound.isFavorite;
+          categoryMatch = s.isFavorite;
         } else if (_selectedCategory != '全部') {
-          categoryMatch = sound.category == _selectedCategory;
+          categoryMatch = s.category == _selectedCategory;
         }
 
         // 搜索过滤
         bool searchMatch = true;
         if (_searchQuery.isNotEmpty) {
-          searchMatch = sound.name.toLowerCase().contains(
+          searchMatch = s.name.toLowerCase().contains(
             _searchQuery.toLowerCase(),
           );
         }
@@ -678,126 +664,142 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     });
 
     if (mounted) {
-      final snackBar = ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('音效已删除'),
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 5),
-          action: SnackBarAction(
-            label: '撤销',
-            onPressed: () async {
-              await _undoDeleteSound();
-            },
-          ),
-        ),
-      );
-
-      // 如果用户没有点击撤销，5秒后删除文件
-      snackBar.closed.then((reason) {
-        if (_lastDeletedSound?.id == sound.id && mounted) {
-          // 用户没有点击撤销，删除文件
-          _fileService.deleteImportedFile(sound);
-          _lastDeletedSound = null;
-        }
-      });
+      _showSnackBar('已删除');
     }
   }
 
-  /// 撤销删除音效
-  Future<void> _undoDeleteSound() async {
-    if (_lastDeletedSound == null) return;
-
-    try {
-      // 恢复数据库记录
-      await _databaseService.insertSound(_lastDeletedSound!);
-
+  /// 处理返回键按下事件
+  void _handleBackPressed() {
+    // 如果在多选模式，先退出多选
+    if (_isSelectionMode) {
       setState(() {
-        _allSounds.insert(0, _lastDeletedSound!);
-        // 更新过滤后的列表
-        _filteredSounds = _allSounds.where((sound) {
-          // 分类过滤
-          bool categoryMatch = true;
-          if (_selectedCategory == '收藏') {
-            categoryMatch = sound.isFavorite;
-          } else if (_selectedCategory != '全部') {
-            categoryMatch = sound.category == _selectedCategory;
-          }
-
-          // 搜索过滤
-          bool searchMatch = true;
-          if (_searchQuery.isNotEmpty) {
-            searchMatch = sound.name.toLowerCase().contains(
-              _searchQuery.toLowerCase(),
-            );
-          }
-
-          return categoryMatch && searchMatch;
-        }).toList();
+        _isSelectionMode = false;
+        _selectedSoundIds.clear();
       });
-
-      _lastDeletedSound = null; // 清除保存的数据
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('已恢复音效'),
-            behavior: SnackBarBehavior.floating,
-            duration: Duration(seconds: 2),
-          ),
-        );
-      }
-    } catch (e) {
-      debugPrint('撤销删除失败: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('撤销失败，请重试'),
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      return;
     }
+
+    // 否则处理双击返回退出应用
+    final now = DateTime.now();
+    if (_lastBackPressTime == null ||
+        now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
+      _lastBackPressTime = now;
+      
+      if (mounted) {
+        _showSnackBar('再按一次返回键退出应用', duration: const Duration(seconds: 2));
+      }
+    } else {
+      // 两次按下时间间隔小于2秒，退出应用
+      exit(0);
+    }
+  }
+
+  /// 显示SnackBar提示信息，确保不被遮挡
+  void _showSnackBar(
+    String message, {
+    Duration duration = const Duration(seconds: 2),
+    Color? backgroundColor,
+    SnackBarAction? action,
+  }) {
+    if (!mounted) return;
+
+    // 清除所有之前的 SnackBar
+    ScaffoldMessenger.of(context).clearSnackBars();
+
+    // 计算bottomSheet的高度
+    final bottomSheetHeight = _isSelectionMode && _selectedSoundIds.isNotEmpty ? 80.0 : 0.0;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: duration,
+        behavior: SnackBarBehavior.floating,
+        margin: EdgeInsets.fromLTRB(16, 0, 16, bottomSheetHeight + 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        backgroundColor: backgroundColor,
+        action: action,
+        dismissDirection: DismissDirection.down,
+      ),
+    );
+  }
+
+  /// 显示带图标的SnackBar（用于复制等操作）
+  void _showSnackBarWithIcon(
+    String message,
+    IconData icon, {
+    Duration duration = const Duration(seconds: 1),
+    Color? backgroundColor,
+  }) {
+    if (!mounted) return;
+
+    // 清除所有之前的 SnackBar
+    ScaffoldMessenger.of(context).clearSnackBars();
+
+    final bottomSheetHeight = _isSelectionMode && _selectedSoundIds.isNotEmpty ? 80.0 : 0.0;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(icon, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        duration: duration,
+        behavior: SnackBarBehavior.floating,
+        margin: EdgeInsets.fromLTRB(16, 0, 16, bottomSheetHeight + 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        backgroundColor: backgroundColor,
+        dismissDirection: DismissDirection.down,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            // 顶部标题栏
-            _buildAppBar(theme),
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) {
+        if (didPop) return;
+        _handleBackPressed();
+      },
+      child: Scaffold(
+        body: SafeArea(
+          child: Column(
+            children: [
+              // 顶部标题栏
+              _buildAppBar(theme),
 
-            // 搜索栏
-            custom.SearchBar(
-              onSearch: (query) {
-                setState(() {
-                  _searchQuery = query;
-                  // 更新过滤后的列表
-                  _filteredSounds = _allSounds.where((sound) {
-                    // 分类过滤
-                    bool categoryMatch = true;
-                    if (_selectedCategory == '收藏') {
-                      categoryMatch = sound.isFavorite;
-                    } else if (_selectedCategory != '全部') {
-                      categoryMatch = sound.category == _selectedCategory;
-                    }
+              // 搜索栏
+              custom.SearchBar(
+                onSearch: (query) {
+                  setState(() {
+                    _searchQuery = query;
+                    // 更新过滤后的列表
+                    _filteredSounds = _allSounds.where((sound) {
+                      // 分类过滤
+                      bool categoryMatch = true;
+                      if (_selectedCategory == '收藏') {
+                        categoryMatch = sound.isFavorite;
+                      } else if (_selectedCategory != '全部') {
+                        categoryMatch = sound.category == _selectedCategory;
+                      }
 
-                    // 搜索过滤
-                    bool searchMatch = true;
-                    if (_searchQuery.isNotEmpty) {
-                      searchMatch = sound.name.toLowerCase().contains(
-                        _searchQuery.toLowerCase(),
-                      );
-                    }
+                      // 搜索过滤
+                      bool searchMatch = true;
+                      if (_searchQuery.isNotEmpty) {
+                        searchMatch = sound.name.toLowerCase().contains(
+                          _searchQuery.toLowerCase(),
+                        );
+                      }
 
-                    return categoryMatch && searchMatch;
-                  }).toList();
-                });
-              },
+                      return categoryMatch && searchMatch;
+                    }).toList();
+                  });
+                },
               onClear: () {
                 setState(() {
                   _searchQuery = '';
@@ -867,11 +869,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
           ],
         ),
+        ),
+        floatingActionButton: _buildFAB(theme),
+        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+        bottomSheet: _isSelectionMode && _selectedSoundIds.isNotEmpty
+            ? _buildSelectionBottomSheet(theme)
+            : null,
       ),
-      floatingActionButton: _buildFAB(theme),
-      bottomSheet: _isSelectionMode && _selectedSoundIds.isNotEmpty
-          ? _buildSelectionBottomSheet(theme)
-          : null,
     );
   }
 
@@ -908,7 +912,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '梗音盒',
+                  '梗音效',
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
@@ -999,6 +1003,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
               const PopupMenuDivider(),
               const PopupMenuItem(
+                value: 'export_manager',
+                child: ListTile(
+                  leading: Icon(Icons.folder_open_rounded),
+                  title: Text('管理导出文件'),
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                ),
+              ),
+              const PopupMenuItem(
                 value: 'settings',
                 child: ListTile(
                   leading: Icon(Icons.settings_rounded),
@@ -1028,10 +1041,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         await _handleImport();
         break;
       case 'export_all':
-        await _handleExportAll();
+        await _showExportAllDialog();
         break;
       case 'export_category':
-        await _handleExportCategory();
+        await _showExportCategoryDialog();
+        break;
+      case 'export_manager':
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ExportManagerScreen(
+              onDataChanged: _initializeSounds,
+            ),
+          ),
+        );
         break;
       case 'settings':
         Navigator.push(
@@ -1045,54 +1068,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
   }
 
-  Future<void> _handleImport() async {
-    // 第一步：选择文件
-    final fileInfo = await _importExportService.pickFileAndGetType();
-    if (fileInfo == null) {
-      return; // 用户取消选择
-    }
-
-    final fileType = fileInfo.type;
-    final fileContent = fileInfo.content;
-
-    if (!mounted) return;
-
-    // 第二步：根据文件类型显示不同的对话框
-    switch (fileType) {
-      case 'sound':
-      case 'multiple':
-        // 单个音效或多个音效：直接选择导入分类
-        await _showImportCategoryDialog(fileContent, fileType);
-        break;
-
-      case 'category':
-        // 有分类的多个音效：选择是否保持原分类或使用新分类
-        await _showCategoryImportOptionsDialog(fileContent);
-        break;
-
-      case 'full':
-        // 完整备份：选择是否覆盖现有数据
-        await _showFullBackupImportDialog(fileContent);
-        break;
-
-      default:
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('未知的文件类型'),
-              backgroundColor: Colors.red,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
-    }
-  }
-
-  /// 显示导入分类选择对话框（用于单个和多个音效）
-  Future<void> _showImportCategoryDialog(
-    String fileContent,
-    String fileType,
-  ) async {
+  /// 通用分类选择对话框 - 复用于多个导入流程
+  Future<String?> _showSelectCategoryDialog() async {
     final validCategories = [
       '默认',
       ...SettingsService.instance.customCategories,
@@ -1101,10 +1078,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     bool showNewCategoryInput = false;
     final newCategoryController = TextEditingController();
 
-    if (!mounted) return;
+    if (!mounted) return null;
 
-    // 显示分类选择对话框
-    final categoriesResult = await showDialog<String>(
+    final result = await showDialog<String>(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
@@ -1162,7 +1138,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       Expanded(
                         child: OutlinedButton(
                           onPressed: () {
-                            setDialogState(() => showNewCategoryInput = false);
+                            setDialogState(
+                              () => showNewCategoryInput = false,
+                            );
                             newCategoryController.clear();
                           },
                           child: const Text('取消'),
@@ -1201,27 +1179,78 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       ),
     );
 
-    if (categoriesResult == null) return;
+    return result;
+  }
+
+  Future<void> _handleImport() async {
+    // 第一步：选择文件
+    final fileInfo = await _importExportService.pickFileAndGetType();
+    if (fileInfo == null) {
+      return; // 用户取消选择
+    }
+
+    final fileType = fileInfo.type;
+    final fileContent = fileInfo.content;
+
+    if (!mounted) return;
+
+    // 第二步：根据文件类型显示不同的对话框
+    switch (fileType) {
+      case 'sound':
+      case 'multiple':
+        // 单个音效或多个音效：直接选择导入分类
+        await _showImportCategoryDialog(fileContent, fileType);
+        break;
+
+      case 'category':
+        // 有分类的多个音效：选择是否保持原分类或使用新分类
+        await _showCategoryImportOptionsDialog(fileContent);
+        break;
+
+      case 'full':
+        // 完整备份：选择是否覆盖现有数据
+        await _showFullBackupImportDialog(fileContent);
+        break;
+
+      default:
+        if (mounted) {
+          _showSnackBar('未知的文件类型', backgroundColor: Colors.red);
+        }
+    }
+  }
+
+  /// 显示导入分类选择对话框（用于单个和多个音效）
+  Future<void> _showImportCategoryDialog(
+    String fileContent,
+    String fileType,
+  ) async {
+    final validCategories = [
+      '默认',
+      ...SettingsService.instance.customCategories,
+    ];
+
+    if (!mounted) return;
+
+    // 使用通用分类选择方法
+    final selectedCategory = await _showSelectCategoryDialog();
+    if (selectedCategory == null) return;
 
     // 确保分类存在
-    if (categoriesResult != '默认' &&
-        !validCategories.contains(categoriesResult)) {
-      await SettingsService.instance.addCategory(categoriesResult);
+    if (selectedCategory != '默认' &&
+        !validCategories.contains(selectedCategory)) {
+      await SettingsService.instance.addCategory(selectedCategory);
     }
 
     // 执行导入
     final result = await _importExportService.importFromContent(
       fileContent,
-      overrideCategory: categoriesResult,
+      overrideCategory: selectedCategory,
     );
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result.message),
-          backgroundColor: result.success ? Colors.green : Colors.red,
-          behavior: SnackBarBehavior.floating,
-        ),
+      _showSnackBar(
+        result.message,
+        backgroundColor: result.success ? Colors.green : Colors.red,
       );
       if (result.success) {
         await _initializeSounds();
@@ -1269,12 +1298,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         overrideCategory: null,
       );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(importResult.message),
-            backgroundColor: importResult.success ? Colors.green : Colors.red,
-            behavior: SnackBarBehavior.floating,
-          ),
+        _showSnackBar(
+          importResult.message,
+          backgroundColor: importResult.success ? Colors.green : Colors.red,
         );
         if (importResult.success) {
           await _initializeSounds();
@@ -1282,132 +1308,25 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       }
     } else {
       // 选择新分类导入
-      String selectedCategory = '默认';
-      bool showNewCategoryInput = false;
-      final newCategoryController = TextEditingController();
-
-      if (!mounted) return;
-
-      final categoriesResult = await showDialog<String>(
-        context: context,
-        builder: (context) => StatefulBuilder(
-          builder: (context, setDialogState) => AlertDialog(
-            title: const Text('选择导入分类'),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (!showNewCategoryInput) ...[
-                    DropdownButtonFormField<String>(
-                      value: selectedCategory,
-                      decoration: InputDecoration(
-                        labelText: '选择分类',
-                        prefixIcon: const Icon(Icons.folder_rounded),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      items: validCategories.map((category) {
-                        return DropdownMenuItem(
-                          value: category,
-                          child: Text(category),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        if (value != null) {
-                          setDialogState(() => selectedCategory = value);
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    OutlinedButton.icon(
-                      onPressed: () {
-                        setDialogState(() => showNewCategoryInput = true);
-                      },
-                      icon: const Icon(Icons.add_rounded),
-                      label: const Text('新建分类'),
-                    ),
-                  ] else ...[
-                    TextField(
-                      controller: newCategoryController,
-                      decoration: InputDecoration(
-                        labelText: '新分类名称',
-                        hintText: '输入新分类名称',
-                        prefixIcon: const Icon(Icons.create_new_folder_rounded),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () {
-                              setDialogState(
-                                () => showNewCategoryInput = false,
-                              );
-                              newCategoryController.clear();
-                            },
-                            child: const Text('取消'),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: FilledButton(
-                            onPressed: () {
-                              final newCategory = newCategoryController.text
-                                  .trim();
-                              if (newCategory.isNotEmpty) {
-                                Navigator.pop(context, newCategory);
-                              }
-                            },
-                            child: const Text('确定'),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('取消'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(context, selectedCategory),
-                child: const Text('继续'),
-              ),
-            ],
-          ),
-        ),
-      );
-
-      if (categoriesResult == null) return;
+      final selectedCategory = await _showSelectCategoryDialog();
+      if (selectedCategory == null) return;
 
       // 确保分类存在
-      if (categoriesResult != '默认' &&
-          !validCategories.contains(categoriesResult)) {
-        await SettingsService.instance.addCategory(categoriesResult);
+      if (selectedCategory != '默认' &&
+          !validCategories.contains(selectedCategory)) {
+        await SettingsService.instance.addCategory(selectedCategory);
       }
 
       // 执行导入
       final importResult = await _importExportService.importFromContent(
         fileContent,
-        overrideCategory: categoriesResult,
+        overrideCategory: selectedCategory,
       );
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(importResult.message),
-            backgroundColor: importResult.success ? Colors.green : Colors.red,
-            behavior: SnackBarBehavior.floating,
-          ),
+        _showSnackBar(
+          importResult.message,
+          backgroundColor: importResult.success ? Colors.green : Colors.red,
         );
         if (importResult.success) {
           await _initializeSounds();
@@ -1537,43 +1456,83 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
   }
 
-  Future<void> _handleExportAll() async {
-    if (_allSounds.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('没有音效可导出'),
-          behavior: SnackBarBehavior.floating,
+  /// 显示全部导出名称对话框
+  /// 通用导出名称输入对话框
+  Future<String?> _showExportNameDialog({String defaultName = ''}) async {
+    final nameController = TextEditingController(text: defaultName);
+    
+    if (!mounted) return null;
+
+    return showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('指定导出名称'),
+        content: TextField(
+          controller: nameController,
+          decoration: const InputDecoration(
+            hintText: '请输入导出文件名',
+            border: OutlineInputBorder(),
+          ),
+          autofocus: true,
         ),
-      );
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (nameController.text.isNotEmpty) {
+                Navigator.pop(context, nameController.text);
+              }
+            },
+            child: const Text('确定'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showExportAllDialog() async {
+    final exportName = await _showExportNameDialog(defaultName: '梗音效备份');
+    if (exportName != null) {
+      await _handleExportAll(customName: exportName);
+    }
+  }
+
+  Future<void> _handleExportAll({String? customName}) async {
+    if (_allSounds.isEmpty) {
+      _showSnackBar('没有音效可导出');
       return;
     }
 
     try {
-      final path = await _importExportService.exportAll(_allSounds);
+      final path = await _importExportService.exportAll(_allSounds, customName: customName);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(path != null ? '导出成功: $path' : '导出已取消'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        _showSnackBar(path != null ? '导出成功（完整备份）' : '导出已取消');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('导出失败: $e'),
-            behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 3),
-          ),
-        );
+        _showSnackBar('导出失败: $e', duration: const Duration(seconds: 3));
       }
     }
   }
 
-  Future<void> _handleExportCategory() async {
+  /// 显示分类导出名称对话框
+  Future<void> _showExportCategoryDialog() async {
+    final exportName = await _showExportNameDialog(defaultName: _selectedCategory);
+    if (exportName != null) {
+      await _handleExportCategory(customName: exportName);
+    }
+  }
+
+  Future<void> _handleExportCategory({String? customName}) async {
     if (_selectedCategory == '全部') {
-      await _handleExportAll();
+      if (customName != null) {
+        await _handleExportAll(customName: customName);
+      } else {
+        await _showExportAllDialog();
+      }
       return;
     }
 
@@ -1586,12 +1545,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         .toList();
 
     if (categorySounds.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('当前分类没有音效'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      _showSnackBar('当前分类没有音效');
       return;
     }
 
@@ -1599,24 +1553,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       final path = await _importExportService.exportCategory(
         _selectedCategory,
         categorySounds,
+        customName: customName,
       );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(path != null ? '导出成功: $path' : '导出已取消'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        _showSnackBar(path != null ? '导出成功（分类）' : '导出已取消');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('导出失败: $e'),
-            behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 3),
-          ),
-        );
+        _showSnackBar('导出失败: $e', duration: const Duration(seconds: 3));
       }
     }
   }
@@ -1639,7 +1583,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 subtitle: Text('将 ${sounds.length} 个音效打包导出'),
                 onTap: () async {
                   Navigator.pop(context);
-                  await _exportMultipleSounds(sounds, asZip: true);
+                  await _showMultiSelectExportNameDialog(sounds, asZip: true);
                 },
               ),
               ListTile(
@@ -1658,6 +1602,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
+  /// 显示多选导出名称输入对话框
+  Future<void> _showMultiSelectExportNameDialog(List<SoundItem> sounds, {required bool asZip}) async {
+    final exportName = await _showExportNameDialog();
+    if (exportName != null) {
+      await _exportMultipleSounds(sounds, asZip: asZip, customName: exportName);
+    }
+  }
+
   /// 显示示例音效导入对话框
   Future<void> _showImportSamplesDialog() async {
     if (!mounted) return;
@@ -1668,9 +1620,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       builder: (context) => AlertDialog(
         title: const Text('欢迎使用！'),
         content: const Text(
-          '是否导入示例音效？\n\n'
-          '我们提供了4个示例音效供您体验\n\n'
-          '稍后您也可以通过菜单的"导入"选项导入',
+          '是否导入示例音效包？\n\n'
+          '我们精心准备了一套精选音效供您体验\n\n'
+          '稍后您也可以通过"导出文件管理"中找到示例音效包并导入',
         ),
         actions: [
           TextButton(
@@ -1680,7 +1632,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           FilledButton(
             onPressed: () async {
               Navigator.pop(context);
-              await _importSampleSounds();
+              await _importSamplePack();
             },
             child: const Text('导入'),
           ),
@@ -1689,27 +1641,21 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  /// 导入示例音效
-  Future<void> _importSampleSounds() async {
+  /// 导入示例音效包（从预制的 .msb 文件导入）
+  Future<void> _importSamplePack() async {
     try {
-      final importedSounds = <SoundItem>[];
-      for (final builtInSound in BuiltInSounds.all) {
-        debugPrint('导入示例音效: ${builtInSound.name}');
-        // 从 assets 复制文件到应用私有目录
-        final importedSound = await _fileService.importBuiltInSound(
-          builtInSound,
-        );
-        importedSounds.add(importedSound);
-        // 保存到数据库
-        await _databaseService.insertSound(importedSound);
-      }
+      // 使用 ImportExportService 从 asset 导入示例音效包
+      final result = await _importExportService.importFromAsset(
+        AppConstants.samplePackAssetPath,
+      );
 
       await _initializeSounds();
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('已导入 ${importedSounds.length} 个示例音效'),
+            content: Text(result.message),
+            backgroundColor: result.success ? null : Colors.red,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -1720,6 +1666,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           SnackBar(
             content: Text('导入失败: $e'),
             behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.red,
           ),
         );
       }
@@ -1730,59 +1677,51 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Future<void> _exportMultipleSounds(
     List<SoundItem> sounds, {
     required bool asZip,
+    String? customName,
   }) async {
     if (sounds.isEmpty) return;
 
     try {
       if (asZip) {
         // 导出为单个压缩包
-        await _exportSoundsAsZip(sounds);
+        await _exportSoundsAsZip(sounds, customName: customName);
       } else {
         // 分别导出每个音效
-        int successCount = 0;
+        List<String> successPaths = [];
         for (final sound in sounds) {
           final path = await _importExportService.exportSound(sound);
           if (path != null) {
-            successCount++;
+            successPaths.add(path);
           }
         }
 
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                successCount > 0 ? '成功导出 $successCount 个音效' : '导出失败',
-              ),
-              behavior: SnackBarBehavior.floating,
-            ),
+        if (mounted && successPaths.isNotEmpty) {
+          _showSnackBar(
+            '导出成功（${successPaths.length}个音效）',
+            duration: const Duration(seconds: 2),
           );
+        } else if (mounted) {
+          _showSnackBar('导出失败');
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('导出失败: $e'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        _showSnackBar('导出失败: $e', duration: const Duration(seconds: 3));
       }
     }
   }
 
   /// 将多个音效导出为压缩包
-  Future<void> _exportSoundsAsZip(List<SoundItem> sounds) async {
+  Future<void> _exportSoundsAsZip(List<SoundItem> sounds, {String? customName}) async {
     try {
       // 创建一个包含所有音效的合并 .msb 文件
       // 导出合并的 .msb 文件（包含所有音效）
-      final path = await _importExportService.exportMultipleSounds(sounds);
+      await _importExportService.exportMultipleSounds(sounds, customName: customName);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              '成功导出 ${sounds.length} 个音效到：${path.split(Platform.pathSeparator).last}',
-            ),
+            content: Text('导出成功（${sounds.length}个音效）'),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -1793,33 +1732,97 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   /// 导出单个音效为 .msb 文件
-  Future<void> _exportSingleSound(SoundItem sound) async {
-    try {
-      final path = await _importExportService.exportSound(sound);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(path != null ? '导出成功: ${sound.name}' : '导出取消'),
-            behavior: SnackBarBehavior.floating,
+  Future<void> _showExportSingleDialog(SoundItem sound) async {
+    final nameController = TextEditingController(text: sound.name);
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('指定导出名称'),
+        content: TextField(
+          controller: nameController,
+          decoration: const InputDecoration(
+            hintText: '请输入导出文件名',
+            border: OutlineInputBorder(),
           ),
-        );
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              if (nameController.text.isNotEmpty) {
+                await _exportSingleSound(sound, customName: nameController.text);
+              }
+            },
+            child: const Text('导出'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _exportSingleSound(SoundItem sound, {String? customName}) async {
+    try {
+      final path = await _importExportService.exportSound(sound, customName: customName);
+      if (mounted) {
+        _showSnackBar(path != null ? '导出成功（单个音效）' : '导出取消');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('导出失败: $e'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        _showSnackBar('导出失败: $e');
       }
     }
   }
 
+  /// 显示保存音频对话框
+  Future<void> _showSaveAudioDialog(SoundItem sound) async {
+    final nameController = TextEditingController(text: sound.name);
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('保存音频文件'),
+        content: TextField(
+          controller: nameController,
+          decoration: const InputDecoration(
+            hintText: '请输入文件名',
+            border: OutlineInputBorder(),
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              if (nameController.text.isNotEmpty) {
+                await _saveAudioFile(sound, customName: nameController.text);
+              }
+            },
+            child: const Text('保存'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 保存封面图片到应用文件夹（自动保存，无需用户自定义名称）
+  Future<void> _showSaveImageDialog(SoundItem sound) async {
+    await _saveImageFile(sound);
+  }
+
   /// 保存音频文件到用户选择的位置
-  Future<void> _saveAudioFile(SoundItem sound) async {
+  Future<void> _saveAudioFile(SoundItem sound, {String? customName}) async {
     try {
-      final path = await _fileService.saveAudioToUserLocation(sound);
+      final path = await _fileService.saveAudioToUserLocation(sound, customName: customName);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -1840,7 +1843,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
   }
 
-  /// 保存封面图片到用户选择的位置
+  /// 保存封面图片到应用文件夹（自动保存）
   Future<void> _saveImageFile(SoundItem sound) async {
     if (sound.imagePath == null) return;
     try {
@@ -1936,36 +1939,48 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       ),
                     ),
                   ),
-                  // 复选框
+                  // 复选框（可点击区域）
                   Positioned(
-                    top: 8,
-                    right: 8,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? Theme.of(context).primaryColor
-                            : Colors.white,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Theme.of(context).primaryColor,
-                          width: 2,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withAlpha(26),
-                            blurRadius: 4,
+                    top: 0,
+                    right: 0,
+                    child: GestureDetector(
+                      onTap: () => setState(() {
+                        if (isSelected) {
+                          _selectedSoundIds.remove(sound.id);
+                        } else {
+                          _selectedSoundIds.add(sound.id);
+                        }
+                      }),
+                      child: Padding(
+                        padding: const EdgeInsets.all(4),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? Theme.of(context).primaryColor
+                                : Colors.white,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Theme.of(context).primaryColor,
+                              width: 2,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withAlpha(26),
+                                blurRadius: 4,
+                              ),
+                            ],
                           ),
-                        ],
+                          width: 28,
+                          height: 28,
+                          child: isSelected
+                              ? const Icon(
+                                  Icons.check_rounded,
+                                  size: 16,
+                                  color: Colors.white,
+                                )
+                              : null,
+                        ),
                       ),
-                      width: 24,
-                      height: 24,
-                      child: isSelected
-                          ? const Icon(
-                              Icons.check_rounded,
-                              size: 14,
-                              color: Colors.white,
-                            )
-                          : null,
                     ),
                   ),
                 ],
@@ -2042,20 +2057,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
           children: [
-            // 选中数量
+            // 选中数量和全选
             Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
                 children: [
-                  Text(
-                    '已选中 $selectedCount 个',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
+                  Flexible(
+                    child: Text(
+                      '已选 $selectedCount',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  if (selectedCount < _filteredSounds.length)
+                  if (selectedCount < _filteredSounds.length) ...[
+                    const SizedBox(width: 8),
                     GestureDetector(
                       onTap: () => setState(() {
                         _selectedSoundIds.clear();
@@ -2072,6 +2089,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         ),
                       ),
                     ),
+                  ],
                 ],
               ),
             ),
@@ -2214,15 +2232,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           const SizedBox(width: 8),
                           Expanded(
                             child: FilledButton(
-                              onPressed: () {
+                              onPressed: () async {
                                 final newCategory = newCategoryController.text
                                     .trim();
                                 if (newCategory.isNotEmpty) {
-                                  // 立即添加到SettingsService并移动音效
-                                  setDialogState(() async {
-                                    await SettingsService.instance.addCategory(
-                                      newCategory,
-                                    );
+                                  // 添加新分类到 SettingsService
+                                  await SettingsService.instance.addCategory(
+                                    newCategory,
+                                  );
+                                  // 更新下拉框列表和选中值
+                                  setDialogState(() {
                                     validCategories = [
                                       '默认',
                                       ...SettingsService
@@ -2231,6 +2250,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                     ];
                                     currentSelected = newCategory;
                                     showNewCategoryInput = false;
+                                    newCategoryController.clear();
                                   });
                                 }
                               },
@@ -2269,11 +2289,37 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             await _databaseService.updateSound(updated);
                           }
 
+                          // 立即更新本地列表并刷新 UI
                           setState(() {
+                            for (final sound in sounds) {
+                              final index = _allSounds.indexWhere((s) => s.id == sound.id);
+                              if (index != -1) {
+                                _allSounds[index] = sound.copyWith(category: targetCategory);
+                              }
+                            }
+                            
+                            // 更新过滤后的列表
+                            _filteredSounds = _allSounds.where((sound) {
+                              bool categoryMatch = true;
+                              if (_selectedCategory == '收藏') {
+                                categoryMatch = sound.isFavorite;
+                              } else if (_selectedCategory != '全部') {
+                                categoryMatch = sound.category == _selectedCategory;
+                              }
+
+                              bool searchMatch = true;
+                              if (_searchQuery.isNotEmpty) {
+                                searchMatch = sound.name.toLowerCase().contains(
+                                  _searchQuery.toLowerCase(),
+                                );
+                              }
+
+                              return categoryMatch && searchMatch;
+                            }).toList();
+                            
                             _selectedSoundIds.clear();
                             _isSelectionMode = false;
                           });
-                          await _initializeSounds();
 
                           if (mounted) {
                             Navigator.pop(context);
@@ -2329,12 +2375,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               });
               await _initializeSounds();
               if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('已删除 ${sounds.length} 个音效'),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
+                _showSnackBar('已删除 ${sounds.length} 个音效');
               }
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
@@ -2346,11 +2387,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildFAB(ThemeData theme) {
-    return FloatingActionButton.extended(
-      onPressed: _addNewSound,
-      backgroundColor: theme.primaryColor,
-      icon: const Icon(Icons.add_rounded),
-      label: const Text('添加', style: TextStyle(fontWeight: FontWeight.w600)),
+    // 在多选模式下，将FAB向上调整，避免被底部操作栏遮挡
+    final fabMarginBottom = _isSelectionMode && _selectedSoundIds.isNotEmpty ? 100.0 : 16.0;
+    
+    return Padding(
+      padding: EdgeInsets.only(bottom: fabMarginBottom - 16.0),
+      child: FloatingActionButton.extended(
+        onPressed: _addNewSound,
+        backgroundColor: theme.primaryColor,
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('添加', style: TextStyle(fontWeight: FontWeight.w600)),
+      ),
     );
   }
 }

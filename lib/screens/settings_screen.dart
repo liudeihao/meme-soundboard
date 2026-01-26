@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import '../services/settings_service.dart';
 import '../services/database_service.dart';
-import '../services/file_service.dart';
-import '../utils/built_in_sounds.dart';
+import '../services/import_export_service.dart';
+import '../utils/app_constants.dart';
+import 'export_manager_screen.dart';
 
 /// 设置页面
 class SettingsScreen extends StatefulWidget {
@@ -17,14 +18,14 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   final _settings = SettingsService.instance;
   final _databaseService = DatabaseService();
-  late final FileService _fileService;
+  late final ImportExportService _importExportService;
 
   VoidCallback? get _onDataChanged => widget.onDataChanged;
 
   @override
   void initState() {
     super.initState();
-    _fileService = FileService();
+    _importExportService = ImportExportService(_databaseService);
     _settings.addListener(_onSettingsChanged);
   }
 
@@ -94,8 +95,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             context,
             icon: Icons.music_note_rounded,
             iconColor: Colors.blue,
-            title: '导入示例音效',
-            subtitle: '导入4个示例音效',
+            title: '导入示例音效包',
+            subtitle: '导入精选示例音效',
             onTap: () => _showImportSamplesDialog(context),
           ),
           _buildListTile(
@@ -105,6 +106,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: '启动时显示的分类',
             subtitle: _settings.startupCategory,
             onTap: () => _showStartupCategoryDialog(context),
+          ),
+
+          const Divider(height: 32),
+
+          // 数据导出
+          _buildSectionHeader(context, '数据导出'),
+          _buildListTile(
+            context,
+            icon: Icons.folder_open_rounded,
+            iconColor: Colors.amber,
+            title: '管理导出文件',
+            subtitle: '查看、分享、导入导出的文件',
+            onTap: () => _openExportDirectory(context),
           ),
 
           const Divider(height: 32),
@@ -119,6 +133,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ? '暂无自定义分类'
                 : '${_settings.customCategories.length} 个自定义分类',
             onTap: () => _showCategoriesDialog(context),
+          ),
+          _buildListTile(
+            context,
+            icon: Icons.swap_vert_rounded,
+            iconColor: Colors.deepOrange,
+            title: '分类显示顺序',
+            subtitle: '调整主页分类的显示顺序',
+            onTap: () => _showCategoriesOrderDialog(context),
           ),
 
           const Divider(height: 32),
@@ -571,10 +593,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text('导入示例音效'),
+        title: const Text('导入示例音效包'),
         content: const Text(
-          '是否导入1个示例音效？\n\n'
-          '这将导入Bruh猫',
+          '是否导入示例音效包？\n\n'
+          '这是一套精心准备的精选音效，帮助您快速体验应用功能。\n\n'
+          '您也可以在"导出文件管理"中找到此音效包并随时导入。',
         ),
         actions: [
           TextButton(
@@ -584,7 +607,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           FilledButton(
             onPressed: () async {
               Navigator.pop(context);
-              await _importSampleSounds();
+              await _importSamplePack();
             },
             child: const Text('导入'),
           ),
@@ -593,19 +616,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  /// 导入示例音效
-  Future<void> _importSampleSounds() async {
+  /// 导入示例音效包（从预制的 .msb 文件导入）
+  Future<void> _importSamplePack() async {
     try {
-      final importedSounds = <String>[];
-      for (final builtInSound in BuiltInSounds.all) {
-        // 从 assets 复制文件到应用私有目录
-        final importedSound = await _fileService.importBuiltInSound(
-          builtInSound,
-        );
-        importedSounds.add(importedSound.name);
-        // 保存到数据库
-        await _databaseService.insertSound(importedSound);
-      }
+      // 使用 ImportExportService 从 asset 导入示例音效包
+      final result = await _importExportService.importFromAsset(
+        AppConstants.samplePackAssetPath,
+      );
 
       // 触发主屏幕的刷新回调
       _onDataChanged?.call();
@@ -613,7 +630,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('已导入 ${importedSounds.length} 个示例音效'),
+            content: Text(result.message),
+            backgroundColor: result.success ? null : Colors.red,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -630,4 +648,117 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
     }
   }
+
+  /// 显示分类顺序调整对话框
+  void _showCategoriesOrderDialog(BuildContext context) {
+    final categories = List<String>.from(_settings.allCategories);
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text('调整分类顺序'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  '长按拖动以调整顺序',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 300),
+                  child: ReorderableListView(
+                    shrinkWrap: true,
+                    onReorder: (oldIndex, newIndex) {
+                      setDialogState(() {
+                        if (newIndex > oldIndex) {
+                          newIndex -= 1;
+                        }
+                        final item = categories.removeAt(oldIndex);
+                        categories.insert(newIndex, item);
+                      });
+                    },
+                    children: [
+                      for (int i = 0; i < categories.length; i++)
+                        ListTile(
+                          key: ValueKey(categories[i]),
+                          dense: true,
+                          leading: Icon(
+                            Icons.drag_handle_rounded,
+                            color: Theme.of(context).primaryColor,
+                          ),
+                          title: Text(categories[i]),
+                          trailing: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).primaryColor.withAlpha(26),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              '${i + 1}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Theme.of(context).primaryColor,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                await _settings.setCategoriesOrder(categories);
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('分类顺序已保存'),
+                      behavior: SnackBarBehavior.floating,
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                }
+              },
+              child: const Text('保存'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 打开导出目录
+  Future<void> _openExportDirectory(BuildContext context) async {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ExportManagerScreen(
+          onDataChanged: _onDataChanged,
+        ),
+      ),
+    );
+  }
 }
+

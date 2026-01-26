@@ -18,6 +18,7 @@ class SettingsService extends ChangeNotifier {
   static const String _keyCustomCategories = 'custom_categories';
   static const String _keyHasImportedDefaults = 'has_imported_defaults';
   static const String _keyStartupCategory = 'startup_category';
+  static const String _keyCategoriesOrder = 'categories_order';
 
   // 默认值
   ThemeMode _themeMode = ThemeMode.system;
@@ -27,6 +28,7 @@ class SettingsService extends ChangeNotifier {
   List<String> _customCategories = [];
   bool _hasImportedDefaults = false;
   String _startupCategory = '全部'; // 默认启动时显示全部
+  late List<String> _categoriesOrder; // 分类显示顺序
 
   // Getters
   ThemeMode get themeMode => _themeMode;
@@ -36,9 +38,31 @@ class SettingsService extends ChangeNotifier {
   List<String> get customCategories => _customCategories;
   bool get hasImportedDefaults => _hasImportedDefaults;
   String get startupCategory => _startupCategory;
+  List<String> get categoriesOrder => _categoriesOrder;
 
-  /// 获取所有分类（全部、收藏、默认 + 用户自定义分类）
-  List<String> get allCategories => ['全部', '收藏', '默认', ..._customCategories];
+  /// 获取所有分类（根据保存的顺序返回）
+  List<String> get allCategories {
+    // 确保所有分类都在顺序列表中
+    final defaultCategories = ['全部', '收藏', '默认'];
+    final allCats = [...defaultCategories, ..._customCategories];
+    
+    // 筛选出存在的分类并按照保存的顺序排列
+    final ordered = <String>[];
+    for (final cat in _categoriesOrder) {
+      if (allCats.contains(cat)) {
+        ordered.add(cat);
+      }
+    }
+    
+    // 添加任何未在 _categoriesOrder 中的分类（新添加的分类）
+    for (final cat in allCats) {
+      if (!ordered.contains(cat)) {
+        ordered.add(cat);
+      }
+    }
+    
+    return ordered;
+  }
 
   /// 初始化设置
   Future<void> init() async {
@@ -69,6 +93,9 @@ class SettingsService extends ChangeNotifier {
 
     // 启动时显示的分类
     _startupCategory = _prefs?.getString(_keyStartupCategory) ?? '全部';
+
+    // 分类显示顺序
+    _categoriesOrder = _prefs?.getStringList(_keyCategoriesOrder) ?? ['全部', '收藏', '默认'];
 
     notifyListeners();
   }
@@ -107,6 +134,9 @@ class SettingsService extends ChangeNotifier {
     if (category.isNotEmpty && !_customCategories.contains(category)) {
       _customCategories.add(category);
       await _prefs?.setStringList(_keyCustomCategories, _customCategories);
+      // 添加新分类到顺序列表的末尾
+      _categoriesOrder.add(category);
+      await _prefs?.setStringList(_keyCategoriesOrder, _categoriesOrder);
       notifyListeners();
     }
   }
@@ -115,6 +145,9 @@ class SettingsService extends ChangeNotifier {
   Future<void> removeCategory(String category) async {
     _customCategories.remove(category);
     await _prefs?.setStringList(_keyCustomCategories, _customCategories);
+    // 从顺序列表中移除
+    _categoriesOrder.remove(category);
+    await _prefs?.setStringList(_keyCategoriesOrder, _categoriesOrder);
     notifyListeners();
   }
 
@@ -141,6 +174,13 @@ class SettingsService extends ChangeNotifier {
   Future<void> setStartupCategory(String category) async {
     _startupCategory = category;
     await _prefs?.setString(_keyStartupCategory, category);
+    notifyListeners();
+  }
+
+  /// 更新分类显示顺序
+  Future<void> setCategoriesOrder(List<String> order) async {
+    _categoriesOrder = order;
+    await _prefs?.setStringList(_keyCategoriesOrder, order);
     notifyListeners();
   }
 

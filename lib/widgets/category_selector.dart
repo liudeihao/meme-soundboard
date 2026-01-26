@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../utils/built_in_sounds.dart';
+import '../utils/app_constants.dart';
 import '../services/settings_service.dart';
 
 /// 分类选择器组件
@@ -28,8 +28,8 @@ class CategorySelector extends StatelessWidget {
         itemBuilder: (context, index) {
           final category = categories[index];
           final isSelected = category == selectedCategory;
-          final color = BuiltInSounds.getCategoryColor(category);
-          final icon = BuiltInSounds.getCategoryIcon(category);
+          final color = AppConstants.getCategoryColor(category);
+          final icon = AppConstants.getCategoryIcon(category);
 
           return GestureDetector(
             onTap: () => onCategorySelected(category),

@@ -32,7 +32,7 @@ class ImportExportService {
   }
 
   /// 导出单个音效（包含文件内容）
-  Future<String?> exportSound(SoundItem sound) async {
+  Future<String?> exportSound(SoundItem sound, {String? customName}) async {
     try {
       final soundData = await _createExportDataWithFiles(sound);
 
@@ -43,9 +43,11 @@ class ImportExportService {
         'exportedAt': DateTime.now().toIso8601String(),
       };
 
+      // 使用安全的文件名，避免特殊字符导致的覆盖问题
+      final safeName = customName != null ? sanitizeFileName(customName) : sanitizeFileName(sound.name);
       return await _saveExportFile(
         jsonEncode(exportData),
-        '${sound.name}${AppConstants.exportFileExtension}',
+        '$safeName${AppConstants.exportFileExtension}',
       );
     } catch (e) {
       debugPrint('导出单个音效失败: $e');
@@ -63,47 +65,21 @@ class ImportExportService {
     String? imageFileName;
 
     // 读取并编码音频文件
-    if (sound.sourceType == SoundSourceType.asset) {
-      // Asset 资源从 assets 目录读取
-      try {
-        final byteData = await rootBundle.load('assets/${sound.soundPath}');
-        soundBase64 = base64Encode(byteData.buffer.asUint8List());
-        soundFileName = p.basename(sound.soundPath);
-      } catch (e) {
-        // ignore: avoid_print
-        print('读取 asset 音频失败: $e');
-      }
-    } else if (sound.sourceType == SoundSourceType.file) {
-      // 本地文件
-      final soundFile = File(sound.soundPath);
-      if (await soundFile.exists()) {
-        final bytes = await soundFile.readAsBytes();
-        soundBase64 = base64Encode(bytes);
-        soundFileName = p.basename(sound.soundPath);
-      }
+    final soundFile = File(sound.soundPath);
+    if (await soundFile.exists()) {
+      final bytes = await soundFile.readAsBytes();
+      soundBase64 = base64Encode(bytes);
+      soundFileName = p.basename(sound.soundPath);
     }
 
     // 读取并编码图片文件
-    if (sound.imagePath != null) {
-      if (sound.sourceType == SoundSourceType.asset &&
-          sound.imagePath!.startsWith('images/')) {
-        // Asset 图片
-        try {
-          final byteData = await rootBundle.load('assets/${sound.imagePath}');
-          imageBase64 = base64Encode(byteData.buffer.asUint8List());
-          imageFileName = p.basename(sound.imagePath!);
-        } catch (e) {
-          // ignore: avoid_print
-          print('读取 asset 图片失败: $e');
-        }
-      } else if (!sound.imagePath!.startsWith('http')) {
-        // 本地图片文件
-        final imageFile = File(sound.imagePath!);
-        if (await imageFile.exists()) {
-          final bytes = await imageFile.readAsBytes();
-          imageBase64 = base64Encode(bytes);
-          imageFileName = p.basename(sound.imagePath!);
-        }
+    if (sound.imagePath != null && !sound.imagePath!.startsWith('http')) {
+      // 本地图片文件
+      final imageFile = File(sound.imagePath!);
+      if (await imageFile.exists()) {
+        final bytes = await imageFile.readAsBytes();
+        imageBase64 = base64Encode(bytes);
+        imageFileName = p.basename(sound.imagePath!);
       }
     }
 
@@ -124,8 +100,9 @@ class ImportExportService {
   /// 导出分类下的所有音效（包含文件内容）
   Future<String?> exportCategory(
     String category,
-    List<SoundItem> sounds,
-  ) async {
+    List<SoundItem> sounds, {
+    String? customName,
+  }) async {
     try {
       final categorySounds = sounds
           .where((s) => s.category == category)
@@ -145,9 +122,15 @@ class ImportExportService {
         'exportedAt': DateTime.now().toIso8601String(),
       };
 
+      // 改进文件名：使用日期时间戳，避免覆盖
+      final now = DateTime.now();
+      final dateStr = '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}_${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}${now.second.toString().padLeft(2, '0')}';
+      final safeCategoryName = customName != null ? sanitizeFileName(customName) : sanitizeFileName(category);
+      final filename = customName != null ? '$safeCategoryName${AppConstants.exportFileExtension}' : '${safeCategoryName}_${dateStr}${AppConstants.exportFileExtension}';
+
       return await _saveExportFile(
         jsonEncode(exportData),
-        '${category}_sounds${AppConstants.exportFileExtension}',
+        filename,
       );
     } catch (e) {
       debugPrint('导出分类失败: $e');
@@ -156,7 +139,7 @@ class ImportExportService {
   }
 
   /// 导出所有音效和配置（包含文件内容）
-  Future<String?> exportAll(List<SoundItem> sounds) async {
+  Future<String?> exportAll(List<SoundItem> sounds, {String? customName}) async {
     try {
       final customCategories = SettingsService.instance.customCategories
           .toList();
@@ -180,9 +163,15 @@ class ImportExportService {
         'exportedAt': DateTime.now().toIso8601String(),
       };
 
+      // 改进文件名：使用日期时间，避免覆盖
+      final now = DateTime.now();
+      final dateStr = '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}_${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}${now.second.toString().padLeft(2, '0')}';
+      final safeName = customName != null ? sanitizeFileName(customName) : '梗音效备份_$dateStr';
+      final filename = '$safeName${AppConstants.exportFileExtension}';
+
       return await _saveExportFile(
         jsonEncode(exportData),
-        'backup_${DateTime.now().year}${DateTime.now().month}${DateTime.now().day}${AppConstants.exportFileExtension}',
+        filename,
       );
     } catch (e) {
       debugPrint('导出全部失败: $e');
@@ -191,7 +180,7 @@ class ImportExportService {
   }
 
   /// 导出多个选中的音效为一个文件
-  Future<String> exportMultipleSounds(List<SoundItem> sounds) async {
+  Future<String> exportMultipleSounds(List<SoundItem> sounds, {String? customName}) async {
     final soundsData = <Map<String, dynamic>>[];
     for (final sound in sounds) {
       final soundData = await _createExportDataWithFiles(sound);
@@ -206,8 +195,11 @@ class ImportExportService {
       'exportedAt': DateTime.now().toIso8601String(),
     };
 
-    final filename =
-        '音效合集_${DateTime.now().millisecondsSinceEpoch}${AppConstants.exportFileExtension}';
+    // 改进文件名：使用日期时间和序列号，避免覆盖
+    final now = DateTime.now();
+    final dateStr = '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}_${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}${now.second.toString().padLeft(2, '0')}';
+    final safeName = customName != null ? sanitizeFileName(customName) : '音效合集_$dateStr';
+    final filename = '$safeName${AppConstants.exportFileExtension}';
     final path = await _saveExportFile(jsonEncode(exportData), filename);
 
     if (path == null) {
@@ -249,17 +241,117 @@ class ImportExportService {
 
     // 方案 3: 尝试应用文档目录
     try {
-      targetDir = await getApplicationDocumentsDirectory();
-      if (targetDir != null) {
-        debugPrint('✓ 使用应用文档目录: ${targetDir.path}');
-        return targetDir;
-      }
+      final docsDir = await getApplicationDocumentsDirectory();
+      debugPrint('✓ 使用应用文档目录: ${docsDir.path}');
+      return docsDir;
     } catch (e) {
       lastError = '文档目录: $e';
       debugPrint('✗ 应用文档目录失败: $e');
     }
 
     throw Exception('无法获取存储目录。$lastError');
+  }
+
+  /// 获取默认导出目录路径
+  Future<String?> getDefaultExportDirectory() async {
+    try {
+      if (Platform.isAndroid) {
+        final dir = await _getAndroidStorageDirectory();
+        return dir.path;
+      } else if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
+        // 在桌面平台，导出到下载目录
+        try {
+          final dir = await getDownloadsDirectory();
+          if (dir != null) {
+            return dir.path;
+          }
+        } catch (e) {
+          debugPrint('获取下载目录失败: $e');
+        }
+        
+        // 降级方案：使用文档目录
+        try {
+          final dir = await getApplicationDocumentsDirectory();
+          return dir.path;
+        } catch (e) {
+          debugPrint('获取文档目录失败: $e');
+        }
+      }
+      return null;
+    } catch (e) {
+      debugPrint('获取默认导出目录失败: $e');
+      return null;
+    }
+  }
+
+  /// 打开默认导出目录（使用系统文件管理器）
+  Future<bool> openDefaultExportDirectory() async {
+    try {
+      final dirPath = await getDefaultExportDirectory();
+      if (dirPath == null) {
+        debugPrint('获取导出目录失败');
+        return false;
+      }
+
+      final dir = Directory(dirPath);
+      if (!await dir.exists()) {
+        await dir.create(recursive: true);
+      }
+
+      debugPrint('尝试打开目录: $dirPath');
+
+      if (Platform.isWindows) {
+        // Windows 上使用 explorer /root 打开文件夹
+        try {
+          await Process.run('explorer.exe', [dirPath]);
+          debugPrint('✓ 已打开 Windows 文件管理器');
+          return true;
+        } catch (e) {
+          debugPrint('✗ Windows explorer 失败: $e');
+          return false;
+        }
+      } else if (Platform.isMacOS) {
+        // macOS 上使用 open 命令
+        try {
+          await Process.run('open', [dirPath]);
+          debugPrint('✓ 已打开 macOS Finder');
+          return true;
+        } catch (e) {
+          debugPrint('✗ macOS open 失败: $e');
+          return false;
+        }
+      } else if (Platform.isLinux) {
+        // Linux 上尝试用 xdg-open
+        try {
+          await Process.run('xdg-open', [dirPath]);
+          debugPrint('✓ 已打开 Linux 文件管理器');
+          return true;
+        } catch (e) {
+          debugPrint('✗ Linux xdg-open 失败: $e');
+          return false;
+        }
+      } else if (Platform.isAndroid) {
+        // Android 上使用隐式 Intent
+        try {
+          await Process.run('am', [
+            'start',
+            '-a',
+            'android.intent.action.VIEW',
+            '-d',
+            'file://$dirPath',
+          ]);
+          debugPrint('✓ 已打开 Android 文件管理器');
+          return true;
+        } catch (e) {
+          debugPrint('✗ Android 打开失败: $e');
+          return false;
+        }
+      }
+      return false;
+    } catch (e) {
+      debugPrint('✗ 打开导出目录失败: $e');
+      return false;
+    }
   }
 
   /// 保存导出文件（允许用户选择位置）
@@ -322,6 +414,59 @@ class ImportExportService {
       return await importFromContent(content);
     } catch (e) {
       return ImportResult(success: false, message: '导入失败: $e');
+    }
+  }
+
+  /// 从指定文件路径导入
+  Future<ImportResult> importFromFilePath(String filePath) async {
+    try {
+      final file = File(filePath);
+      if (!await file.exists()) {
+        return ImportResult(success: false, message: '文件不存在');
+      }
+      final content = await file.readAsString(encoding: utf8);
+      return await importFromContent(content);
+    } catch (e) {
+      return ImportResult(success: false, message: '导入失败: $e');
+    }
+  }
+
+  /// 从 assets 目录导入预制的 .msb 文件（用于导入示例音效包）
+  /// [assetPath] - asset 路径，例如 'assets/samples/示例音效包.msb'
+  Future<ImportResult> importFromAsset(String assetPath) async {
+    try {
+      debugPrint('从 asset 导入示例音效包: $assetPath');
+      final content = await rootBundle.loadString(assetPath);
+      return await importFromContent(content);
+    } catch (e) {
+      debugPrint('从 asset 导入失败: $e');
+      return ImportResult(success: false, message: '导入示例音效包失败: $e');
+    }
+  }
+
+  /// 将预制的示例音效包复制到导出目录（使其出现在"导出文件管理"中）
+  Future<bool> copySamplePackToExportDir() async {
+    try {
+      final exportDir = await getDefaultExportDirectory();
+      if (exportDir == null) return false;
+
+      final targetPath = p.join(exportDir, '${AppConstants.samplePackName}${AppConstants.exportFileExtension}');
+      final targetFile = File(targetPath);
+
+      // 如果已存在则不重复复制
+      if (await targetFile.exists()) {
+        debugPrint('示例音效包已存在于导出目录');
+        return true;
+      }
+
+      // 从 assets 读取并写入
+      final content = await rootBundle.loadString(AppConstants.samplePackAssetPath);
+      await targetFile.writeAsString(content, encoding: utf8);
+      debugPrint('示例音效包已复制到导出目录: $targetPath');
+      return true;
+    } catch (e) {
+      debugPrint('复制示例音效包失败: $e');
+      return false;
     }
   }
 
