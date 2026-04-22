@@ -485,9 +485,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     if (!mounted) return;
 
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('删除分类'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -527,46 +529,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('取消'),
           ),
           if (soundsInCategory.isNotEmpty) ...[
             // 移动到默认分类
             TextButton(
               onPressed: () async {
-                Navigator.pop(context);
+                Navigator.pop(dialogContext);
                 await _databaseService.migrateCategoryForSounds(category, '默认');
                 await _settings.removeCategory(category);
                 _onDataChanged?.call();
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        '已将 ${soundsInCategory.length} 个音效移至"默认"分类',
-                      ),
-                      behavior: SnackBarBehavior.floating,
+                if (!mounted) return;
+                scaffoldMessenger.showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      '已将 ${soundsInCategory.length} 个音效移至"默认"分类',
                     ),
-                  );
-                }
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
               },
               child: const Text('移到默认分类'),
             ),
             // 删除分类和音效
             TextButton(
               onPressed: () async {
-                Navigator.pop(context);
+                Navigator.pop(dialogContext);
                 await _databaseService.deleteSoundsByCategory(category);
                 await _settings.removeCategory(category);
                 _onDataChanged?.call();
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('已删除分类及其下的 ${soundsInCategory.length} 个音效'),
-                      behavior: SnackBarBehavior.floating,
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
+                if (!mounted) return;
+                scaffoldMessenger.showSnackBar(
+                  SnackBar(
+                    content: Text('已删除分类及其下的 ${soundsInCategory.length} 个音效'),
+                    behavior: SnackBarBehavior.floating,
+                    backgroundColor: Colors.red,
+                  ),
+                );
               },
               style: TextButton.styleFrom(foregroundColor: Colors.red),
               child: const Text('删除分类和音效'),
@@ -575,7 +575,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             // 如果分类下没有音效，直接删除
             TextButton(
               onPressed: () async {
-                Navigator.pop(context);
+                Navigator.pop(dialogContext);
                 await _settings.removeCategory(category);
                 _onDataChanged?.call();
               },

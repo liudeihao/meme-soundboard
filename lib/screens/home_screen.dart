@@ -2146,9 +2146,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   /// 显示移动到分类的对话框
   void _showMoveToCategory(List<SoundItem> sounds) {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
     showDialog(
       context: context,
-      builder: (context) {
+      builder: (dialogContext) {
         // 在对话框内部获取分类，每次都是最新的
         List<String> validCategories = [
           '默认',
@@ -2159,7 +2160,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         final newCategoryController = TextEditingController();
 
         return StatefulBuilder(
-          builder: (context, setDialogState) {
+          builder: (statefulContext, setDialogState) {
             // 在 setDialogState 后重新构建时，validCategories 会被重新初始化
             return AlertDialog(
               title: const Text('移动到分类'),
@@ -2265,7 +2266,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () => Navigator.pop(statefulContext),
                   child: const Text('取消'),
                 ),
                 FilledButton(
@@ -2321,17 +2322,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             _isSelectionMode = false;
                           });
 
-                          if (mounted) {
-                            Navigator.pop(context);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  '已将 ${sounds.length} 个音效移动到 $targetCategory',
-                                ),
-                                behavior: SnackBarBehavior.floating,
+                          if (!mounted) return;
+                          if (!dialogContext.mounted) return;
+                          Navigator.pop(dialogContext);
+                          scaffoldMessenger.showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                '已将 ${sounds.length} 个音效移动到 $targetCategory',
                               ),
-                            );
-                          }
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
                         },
                   child: const Text('确认'),
                 ),
