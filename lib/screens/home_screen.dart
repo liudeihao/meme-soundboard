@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -5,6 +6,7 @@ import '../models/sound_item.dart';
 import '../services/audio_service.dart';
 import '../services/database_service.dart';
 import '../services/file_service.dart';
+import '../services/external_import_bridge.dart';
 import '../services/import_export_service.dart';
 import '../services/settings_service.dart';
 import '../utils/app_constants.dart';
@@ -24,7 +26,8 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen>
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   final AudioService _audioService = AudioService();
   final DatabaseService _databaseService = DatabaseService();
   final FileService _fileService = FileService();
@@ -48,6 +51,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    ExternalImportBridge.listenAndroidPush(_onAndroidImportPathPushed);
     _importExportService = ImportExportService(_databaseService);
     _fabAnimationController = AnimationController(
       duration: const Duration(milliseconds: 300),
@@ -98,10 +103,85 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    ExternalImportBridge.clearAndroidPush();
     _audioService.playError.removeListener(_onPlayError);
     _fabAnimationController.dispose();
     SettingsService.instance.removeListener(_onSettingsChanged);
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_tryConsumeAndroidExternalImportOnResume());
+    }
+  }
+
+  void _onAndroidImportPathPushed(String path) {
+    unawaited(_importExternalAndRefresh(path));
+  }
+
+  /// Cold start / resume: consume intent stored before Flutter was ready.
+  Future<void> _tryConsumeAndroidExternalImportOnResume() async {
+    final path = await ExternalImportBridge.consumePendingAndroidPath();
+    if (path != null && path.isNotEmpty && mounted) {
+      await _importExternalAndRefresh(path);
+    }
+  }
+
+  /// Import opened file; caller is responsible for DB list refresh when embedded in init.
+  Future<bool> _tryConsumeAndroidExternalImport({
+    bool showSnackOnFailure = true,
+  }) async {
+    final path = await ExternalImportBridge.consumePendingAndroidPath();
+    if (path == null || path.isEmpty) return false;
+    return _importExternalPack(path, showSnackOnFailure: showSnackOnFailure);
+  }
+
+  Future<void> _importExternalAndRefresh(String path) async {
+    final ok = await _importExternalPack(path, showSnackOnFailure: true);
+    if (ok && mounted) {
+      await _initializeSounds();
+    }
+  }
+
+  /// Returns true if import succeeded.
+  Future<bool> _importExternalPack(
+    String path, {
+    required bool showSnackOnFailure,
+  }) async {
+    final result = await _importExportService.importFromFilePath(path);
+    if (!mounted) return false;
+    final messenger = ScaffoldMessenger.of(context);
+    if (result.success) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle_rounded, color: Colors.white),
+              const SizedBox(width: 8),
+              Expanded(child: Text(result.message)),
+            ],
+          ),
+          backgroundColor: Colors.green.shade700,
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        ),
+      );
+      return true;
+    }
+    if (showSnackOnFailure) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(result.message),
+          backgroundColor: Colors.red.shade700,
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        ),
+      );
+    }
+    return false;
   }
 
   /// 初始化音效列表
@@ -161,6 +241,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         await _databaseService.clearAllSounds();
         dbSounds = [];
       }
+
+      // Other apps (e.g. QQ) open .msb via VIEW / SEND before first frame
+      await _tryConsumeAndroidExternalImport(showSnackOnFailure: true);
+      dbSounds = await _databaseService.getAllSounds();
 
       _allSounds = dbSounds;
       debugPrint('使用数据库中的音效');
