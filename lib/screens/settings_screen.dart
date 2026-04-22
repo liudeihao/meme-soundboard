@@ -82,7 +82,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             icon: Icons.multitrack_audio_rounded,
             iconColor: Colors.green,
             title: '同时播放',
-            subtitle: '允许多个音效同时播放',
+            subtitle: '开启后点击新音效不会中断正在播放的音效',
             value: _settings.allowMultiPlay,
             onChanged: (value) => _settings.setAllowMultiPlay(value),
           ),

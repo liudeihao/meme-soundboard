@@ -2,7 +2,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:async';
 import '../models/sound_item.dart';
-import './settings_service.dart';
+import 'settings_service.dart';
 
 /// 音频服务 - 管理音效的播放
 /// 支持单播放和多播放模式
@@ -20,6 +20,21 @@ class AudioService {
   final ValueNotifier<String?> playError = ValueNotifier(null);
 
   AudioService();
+
+  /// Avoid exclusive Android audio focus and enable iOS mixing so overlapping
+  /// sounds in this app do not interrupt each other.
+  static AudioContext _parallelPlaybackAudioContext() {
+    return AudioContext(
+      android: const AudioContextAndroid(
+        audioFocus: AndroidAudioFocus.none,
+        contentType: AndroidContentType.sonification,
+      ),
+      iOS: AudioContextIOS(
+        category: AVAudioSessionCategory.playback,
+        options: const {AVAudioSessionOptions.mixWithOthers},
+      ),
+    );
+  }
 
   /// 播放音效
   Future<void> play(SoundItem sound) async {
@@ -56,16 +71,16 @@ class AudioService {
       // 设置播放器音量
       await player.setVolume(sound.advancedSettings.volumeLevel);
 
+      final AudioContext? parallelCtx =
+          settings.allowMultiPlay ? _parallelPlaybackAudioContext() : null;
+
       if (sound.isAsset) {
-        // 内置资源
-        await player.play(AssetSource(sound.soundPath));
+        await player.play(AssetSource(sound.soundPath), ctx: parallelCtx);
       } else if (sound.isUrl) {
-        // URL 资源 - 使用 mediaPlayer 模式
         await player.setPlayerMode(PlayerMode.mediaPlayer);
-        await player.play(UrlSource(sound.soundPath));
+        await player.play(UrlSource(sound.soundPath), ctx: parallelCtx);
       } else {
-        // 本地文件
-        await player.play(DeviceFileSource(sound.soundPath));
+        await player.play(DeviceFileSource(sound.soundPath), ctx: parallelCtx);
       }
     } catch (e) {
       debugPrint('播放失败: $e');
@@ -78,7 +93,18 @@ class AudioService {
   void _onPlaybackComplete(AudioPlayer player) {
     _activePlayers.remove(player);
     if (_currentPlayer == player) {
+      _currentPlayer = null;
       currentlyPlaying.value = null;
+    }
+    unawaited(_disposePlayerQuietly(player));
+  }
+
+  Future<void> _disposePlayerQuietly(AudioPlayer player) async {
+    try {
+      if (player.state == PlayerState.disposed) return;
+      await player.dispose();
+    } catch (e) {
+      debugPrint('释放播放器失败: $e');
     }
   }
 

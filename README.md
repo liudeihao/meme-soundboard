@@ -1,23 +1,45 @@
-# meme_soundboard
+# 梗音效 (meme_soundboard)
 
-A new Flutter project.
+基于 Flutter 的本地梗音效板：分类浏览、收藏、搜索、主题切换，以及音效包的导入与导出。
 
-## Getting Started
+## 功能概览
 
-This project is a starting point for a Flutter application.
+- **音效板**：网格展示音效，支持触觉反馈与「正在播放」高亮。
+- **分类与收藏**：系统分类（全部、收藏、默认）与自定义分类；可调整分类顺序。
+- **音频**：可选「同时播放」——开启后新点击的音效不会打断当前正在播放的音效（依赖系统混音能力）。
+- **导入 / 导出**：`.msb` 音效包与完整备份；内置示例包（`assets/samples/`）。
+- **多平台**：Android、iOS、Windows、macOS、Linux、Web（各平台能力以 Flutter 与插件为准）。
 
-A few resources to get you started if this is your first Flutter project:
+## 环境要求
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+- 已安装 [Flutter](https://docs.flutter.dev/get-started/install)（`pubspec.yaml` 中的 Dart SDK 约束需满足）。
+- 克隆仓库后在项目根目录执行依赖安装与（可选）资源生成命令。
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## 快速开始
 
-
-记得运行
 ```shell
 flutter pub get
+flutter run
+```
+
+### 可选：生成应用图标
+
+若修改了 `pubspec.yaml` 中的 `flutter_launcher_icons` 配置，可执行：
+
+```shell
 dart run flutter_launcher_icons
 ```
+
+## 项目结构（简要）
+
+| 路径 | 说明 |
+|------|------|
+| `lib/main.dart` | 入口：主题、竖屏、Windows 窗口尺寸等 |
+| `lib/screens/` | 主界面、设置、导出管理 |
+| `lib/services/` | 数据库、音频、导入导出、设置持久化 |
+| `lib/widgets/` | 音效按钮、搜索栏、弹窗等 |
+| `assets/samples/` | 预制示例 `.msb` 音效包 |
+
+## 许可证
+
+若未单独提供许可证文件，以仓库内实际声明为准。
