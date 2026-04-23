@@ -8,6 +8,7 @@ import '../services/import_export_service.dart';
 import '../services/database_service.dart';
 import '../services/settings_service.dart';
 import '../utils/app_constants.dart';
+import '../widgets/msb_import_preview_dialog.dart';
 
 /// 导出文件信息
 class ExportFileInfo {
@@ -217,29 +218,33 @@ class _ExportManagerScreenState extends State<ExportManagerScreen> {
 
   Future<void> _importFile(ExportFileInfo fileInfo) async {
     try {
-      // 读取文件内容
       final content = await fileInfo.file.readAsString();
       final json = jsonDecode(content) as Map<String, dynamic>;
       final fileType = json['type'] as String? ?? 'unknown';
-      
-      // 根据文件类型显示不同的对话框（与主界面菜单逻辑一致）
+
       if (!mounted) return;
-      
+
+      final previewOk = await MsbImportPreviewDialog.show(
+        context,
+        displayName: fileInfo.name,
+        json: json,
+        sizeBytes: fileInfo.size,
+        modifiedTime: fileInfo.modifiedTime,
+      );
+      if (!previewOk || !mounted) return;
+
       switch (fileType) {
         case 'sound':
         case 'multiple':
-          // 单个音效或多个音效：选择导入分类
-          await _showImportCategoryDialog(content, fileType, fileInfo.name, fileInfo);
+          await _performImport(content);
           break;
 
         case 'category':
-          // 有分类的多个音效：选择是否保持原分类或使用新分类
-          await _showCategoryImportOptionsDialog(content, fileInfo.name);
+          await _showCategoryImportOptionsDialog(content);
           break;
 
         case 'full':
-          // 完整备份：选择是否覆盖现有数据
-          await _showFullBackupImportDialog(content, fileInfo.name);
+          await _showFullBackupImportDialog(content);
           break;
 
         default:
@@ -252,32 +257,9 @@ class _ExportManagerScreenState extends State<ExportManagerScreen> {
     }
   }
 
-  /// 显示导入分类选择对话框（用于单个和多个音效）
-  Future<void> _showImportCategoryDialog(
-    String fileContent,
-    String fileType,
-    String fileName,
-    ExportFileInfo? fileInfo,
-  ) async {
-    // 这里需要访问 SettingsService 获取可用分类
-    // 为了简化，直接导入到默认分类或显示预览然后导入
-    await _showImportPreviewDialog(
-      ExportFileInfo(
-        file: fileInfo?.file ?? File(''),
-        name: fileName,
-        size: fileInfo?.size ?? 0,
-        modifiedTime: fileInfo?.modifiedTime ?? DateTime.now(),
-        type: fileType,
-      ),
-      jsonDecode(fileContent) as Map<String, dynamic>,
-      isDirectImport: true,
-    );
-  }
-
   /// 显示分类导入选项对话框
   Future<void> _showCategoryImportOptionsDialog(
     String fileContent,
-    String fileName,
   ) async {
     if (!mounted) return;
 
@@ -456,7 +438,6 @@ class _ExportManagerScreenState extends State<ExportManagerScreen> {
   /// 显示完整备份导入对话框
   Future<void> _showFullBackupImportDialog(
     String fileContent,
-    String fileName,
   ) async {
     if (!mounted) return;
 
@@ -520,161 +501,6 @@ class _ExportManagerScreenState extends State<ExportManagerScreen> {
     } else {
       // 添加到现有数据
       await _performImport(fileContent);
-    }
-  }
-
-  Future<void> _showImportPreviewDialog(ExportFileInfo fileInfo, Map<String, dynamic> json, {bool isDirectImport = false}) async {
-    final type = json['type'] as String? ?? 'unknown';
-    final exportedAt = json['exportedAt'] as String?;
-    DateTime? exportDate;
-    if (exportedAt != null) {
-      try {
-        exportDate = DateTime.parse(exportedAt);
-      } catch (_) {}
-    }
-
-    List<String> soundNames = [];
-    String? categoryName;
-
-    if (type == 'sound') {
-      final data = json['data'] as Map<String, dynamic>?;
-      if (data != null) {
-        soundNames.add(data['name'] as String? ?? '未知');
-      }
-    } else if (type == 'category') {
-      categoryName = json['category'] as String?;
-      final data = json['data'] as List?;
-      if (data != null) {
-        for (final item in data) {
-          if (item is Map<String, dynamic>) {
-            soundNames.add(item['name'] as String? ?? '未知');
-          }
-        }
-      }
-    } else if (type == 'multiple' || type == 'full') {
-      final sounds = json['sounds'] as List?;
-      if (sounds != null) {
-        for (final item in sounds) {
-          if (item is Map<String, dynamic>) {
-            soundNames.add(item['name'] as String? ?? '未知');
-          }
-        }
-      }
-    }
-
-    final content = jsonEncode(json);
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(
-              _getTypeIcon(type),
-              color: Theme.of(context).primaryColor,
-            ),
-            const SizedBox(width: 8),
-            const Text('导入预览'),
-          ],
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildPreviewRow('文件名', fileInfo.name),
-              _buildPreviewRow('类型', fileInfo.typeText),
-              _buildPreviewRow('大小', fileInfo.sizeText),
-              if (exportDate != null)
-                _buildPreviewRow(
-                  '导出时间',
-                  DateFormat('yyyy-MM-dd HH:mm').format(exportDate),
-                ),
-              if (categoryName != null)
-                _buildPreviewRow('分类', categoryName),
-              const SizedBox(height: 12),
-              Text(
-                '将导入的音效 (${soundNames.length}个):',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                constraints: const BoxConstraints(maxHeight: 200),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: soundNames.length,
-                  itemBuilder: (context, index) {
-                    return ListTile(
-                      dense: true,
-                      leading: const Icon(Icons.music_note, size: 18),
-                      title: Text(
-                        soundNames[index],
-                        style: const TextStyle(fontSize: 14),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('导入'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      await _performImport(content);
-    }
-  }
-
-  Widget _buildPreviewRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 80,
-            child: Text(
-              '$label:',
-              style: TextStyle(
-                color: Colors.grey.shade600,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(value),
-          ),
-        ],
-      ),
-    );
-  }
-
-  IconData _getTypeIcon(String type) {
-    switch (type) {
-      case 'sound':
-        return Icons.music_note_rounded;
-      case 'category':
-        return Icons.folder_rounded;
-      case 'multiple':
-        return Icons.library_music_rounded;
-      case 'full':
-        return Icons.backup_rounded;
-      default:
-        return Icons.insert_drive_file_rounded;
     }
   }
 
@@ -784,7 +610,7 @@ class _ExportManagerScreenState extends State<ExportManagerScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
-                  _getTypeIcon(fileInfo.type),
+                  MsbImportPreviewDialog.typeIcon(fileInfo.type),
                   color: theme.primaryColor,
                 ),
               ),

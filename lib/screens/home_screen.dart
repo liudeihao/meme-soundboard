@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -17,6 +18,7 @@ import '../widgets/sound_button.dart';
 import '../widgets/category_selector.dart';
 import '../widgets/search_bar.dart' as custom;
 import '../widgets/add_sound_dialog.dart';
+import '../widgets/msb_import_preview_dialog.dart';
 import '../widgets/sound_bottom_sheet.dart';
 import 'settings_screen.dart';
 import 'export_manager_screen.dart';
@@ -149,42 +151,84 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
-  /// Returns true if import succeeded.
+  /// Returns true if import succeeded (same steps as menu「导入音效」).
   Future<bool> _importExternalPack(
     String path, {
     required bool showSnackOnFailure,
   }) async {
-    final result = await _importExportService.importFromFilePath(path);
-    if (!mounted) return false;
-    final messenger = ScaffoldMessenger.of(context);
-    if (result.success) {
-      messenger.showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.check_circle_rounded, color: Colors.white),
-              const SizedBox(width: 8),
-              Expanded(child: Text(result.message)),
-            ],
-          ),
-          backgroundColor: Colors.green.shade700,
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        ),
+    try {
+      final file = File(path);
+      if (!await file.exists()) {
+        if (showSnackOnFailure && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('文件不存在'),
+              backgroundColor: Colors.red.shade700,
+              behavior: SnackBarBehavior.floating,
+              margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            ),
+          );
+        }
+        return false;
+      }
+
+      final content = await file.readAsString(encoding: utf8);
+      final Map<String, dynamic> data;
+      try {
+        data = jsonDecode(content) as Map<String, dynamic>;
+      } catch (_) {
+        if (showSnackOnFailure && mounted) {
+          _showSnackBar('不是有效的音效包文件', backgroundColor: Colors.red);
+        }
+        return false;
+      }
+
+      final type = data['type'] as String? ?? 'unknown';
+      final version = data['version'] as String?;
+      if (version == null || type == 'unknown') {
+        if (showSnackOnFailure && mounted) {
+          _showSnackBar('无效的导入文件格式', backgroundColor: Colors.red);
+        }
+        return false;
+      }
+
+      final stat = await file.stat();
+      if (!mounted) return false;
+
+      final confirmed = await MsbImportPreviewDialog.show(
+        context,
+        displayName: p.basenameWithoutExtension(path),
+        json: data,
+        sizeBytes: stat.size,
+        modifiedTime: stat.modified,
       );
-      return true;
+      if (!confirmed || !mounted) return false;
+
+      return _continueMsbImportFlow(content, type);
+    } catch (e) {
+      if (showSnackOnFailure && mounted) {
+        _showSnackBar('导入失败: $e', backgroundColor: Colors.red);
+      }
+      return false;
     }
-    if (showSnackOnFailure) {
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(result.message),
-          backgroundColor: Colors.red.shade700,
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        ),
-      );
+  }
+
+  /// After preview: category / backup dialogs and import (returns whether DB import succeeded).
+  Future<bool> _continueMsbImportFlow(String fileContent, String fileType) async {
+    switch (fileType) {
+      case 'sound':
+      case 'multiple':
+        return _showImportCategoryDialog(fileContent, fileType);
+      case 'category':
+        return _showCategoryImportOptionsDialog(fileContent);
+      case 'full':
+        return _showFullBackupImportDialog(fileContent);
+      default:
+        if (mounted) {
+          _showSnackBar('未知的文件类型', backgroundColor: Colors.red);
+        }
+        return false;
     }
-    return false;
   }
 
   /// 初始化音效列表
@@ -1307,44 +1351,28 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _handleImport() async {
-    // 第一步：选择文件
     final fileInfo = await _importExportService.pickFileAndGetType();
     if (fileInfo == null) {
-      return; // 用户取消选择
+      return;
     }
-
-    final fileType = fileInfo.type;
-    final fileContent = fileInfo.content;
 
     if (!mounted) return;
 
-    // 第二步：根据文件类型显示不同的对话框
-    switch (fileType) {
-      case 'sound':
-      case 'multiple':
-        // 单个音效或多个音效：直接选择导入分类
-        await _showImportCategoryDialog(fileContent, fileType);
-        break;
+    final json = jsonDecode(fileInfo.content) as Map<String, dynamic>;
+    final confirmed = await MsbImportPreviewDialog.show(
+      context,
+      displayName: fileInfo.displayName,
+      json: json,
+      sizeBytes: fileInfo.size,
+      modifiedTime: fileInfo.modifiedTime,
+    );
+    if (!confirmed || !mounted) return;
 
-      case 'category':
-        // 有分类的多个音效：选择是否保持原分类或使用新分类
-        await _showCategoryImportOptionsDialog(fileContent);
-        break;
-
-      case 'full':
-        // 完整备份：选择是否覆盖现有数据
-        await _showFullBackupImportDialog(fileContent);
-        break;
-
-      default:
-        if (mounted) {
-          _showSnackBar('未知的文件类型', backgroundColor: Colors.red);
-        }
-    }
+    await _continueMsbImportFlow(fileInfo.content, fileInfo.type);
   }
 
   /// 显示导入分类选择对话框（用于单个和多个音效）
-  Future<void> _showImportCategoryDialog(
+  Future<bool> _showImportCategoryDialog(
     String fileContent,
     String fileType,
   ) async {
@@ -1353,19 +1381,16 @@ class _HomeScreenState extends State<HomeScreen>
       ...SettingsService.instance.customCategories,
     ];
 
-    if (!mounted) return;
+    if (!mounted) return false;
 
-    // 使用通用分类选择方法
     final selectedCategory = await _showSelectCategoryDialog();
-    if (selectedCategory == null) return;
+    if (selectedCategory == null) return false;
 
-    // 确保分类存在
     if (selectedCategory != '默认' &&
         !validCategories.contains(selectedCategory)) {
       await SettingsService.instance.addCategory(selectedCategory);
     }
 
-    // 执行导入
     final result = await _importExportService.importFromContent(
       fileContent,
       overrideCategory: selectedCategory,
@@ -1380,11 +1405,12 @@ class _HomeScreenState extends State<HomeScreen>
         await _initializeSounds();
       }
     }
+    return result.success;
   }
 
   /// 显示分类导入选项对话框
-  Future<void> _showCategoryImportOptionsDialog(String fileContent) async {
-    if (!mounted) return;
+  Future<bool> _showCategoryImportOptionsDialog(String fileContent) async {
+    if (!mounted) return false;
 
     final validCategories = [
       '默认',
@@ -1413,10 +1439,9 @@ class _HomeScreenState extends State<HomeScreen>
       ),
     );
 
-    if (result == null) return;
+    if (result == null) return false;
 
     if (result == 'keep') {
-      // 保持原分类导入
       final importResult = await _importExportService.importFromContent(
         fileContent,
         overrideCategory: null,
@@ -1430,38 +1455,37 @@ class _HomeScreenState extends State<HomeScreen>
           await _initializeSounds();
         }
       }
-    } else {
-      // 选择新分类导入
-      final selectedCategory = await _showSelectCategoryDialog();
-      if (selectedCategory == null) return;
+      return importResult.success;
+    }
 
-      // 确保分类存在
-      if (selectedCategory != '默认' &&
-          !validCategories.contains(selectedCategory)) {
-        await SettingsService.instance.addCategory(selectedCategory);
-      }
+    final selectedCategory = await _showSelectCategoryDialog();
+    if (selectedCategory == null) return false;
 
-      // 执行导入
-      final importResult = await _importExportService.importFromContent(
-        fileContent,
-        overrideCategory: selectedCategory,
+    if (selectedCategory != '默认' &&
+        !validCategories.contains(selectedCategory)) {
+      await SettingsService.instance.addCategory(selectedCategory);
+    }
+
+    final importResult = await _importExportService.importFromContent(
+      fileContent,
+      overrideCategory: selectedCategory,
+    );
+
+    if (mounted) {
+      _showSnackBar(
+        importResult.message,
+        backgroundColor: importResult.success ? Colors.green : Colors.red,
       );
-
-      if (mounted) {
-        _showSnackBar(
-          importResult.message,
-          backgroundColor: importResult.success ? Colors.green : Colors.red,
-        );
-        if (importResult.success) {
-          await _initializeSounds();
-        }
+      if (importResult.success) {
+        await _initializeSounds();
       }
     }
+    return importResult.success;
   }
 
   /// 显示完整备份导入对话框
-  Future<void> _showFullBackupImportDialog(String fileContent) async {
-    if (!mounted) return;
+  Future<bool> _showFullBackupImportDialog(String fileContent) async {
+    if (!mounted) return false;
 
     final result = await showDialog<String>(
       context: context,
@@ -1493,11 +1517,10 @@ class _HomeScreenState extends State<HomeScreen>
       ),
     );
 
-    if (result == null) return;
+    if (result == null) return false;
 
     if (result == 'replace') {
-      // 显示确认对话框
-      if (!mounted) return;
+      if (!mounted) return false;
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
@@ -1516,10 +1539,9 @@ class _HomeScreenState extends State<HomeScreen>
         ),
       );
 
-      if (confirmed != true || !mounted) return;
+      if (confirmed != true || !mounted) return false;
 
-      // 二次确认
-      if (!mounted) return;
+      if (!mounted) return false;
       final finalConfirmed = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
@@ -1539,9 +1561,8 @@ class _HomeScreenState extends State<HomeScreen>
         ),
       );
 
-      if (finalConfirmed != true || !mounted) return;
+      if (finalConfirmed != true || !mounted) return false;
 
-      // 执行替换导入
       final importResult = await _importExportService.importFromContent(
         fileContent,
         clearFirst: true,
@@ -1559,25 +1580,26 @@ class _HomeScreenState extends State<HomeScreen>
           await _initializeSounds();
         }
       }
-    } else {
-      // 添加到现有数据
-      final importResult = await _importExportService.importFromContent(
-        fileContent,
-      );
+      return importResult.success;
+    }
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(importResult.message),
-            backgroundColor: importResult.success ? Colors.green : Colors.red,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-        if (importResult.success) {
-          await _initializeSounds();
-        }
+    final importResult = await _importExportService.importFromContent(
+      fileContent,
+    );
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(importResult.message),
+          backgroundColor: importResult.success ? Colors.green : Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      if (importResult.success) {
+        await _initializeSounds();
       }
     }
+    return importResult.success;
   }
 
   /// 显示全部导出名称对话框

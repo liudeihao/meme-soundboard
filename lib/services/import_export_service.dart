@@ -16,6 +16,15 @@ import '../utils/app_constants.dart';
 import 'database_service.dart';
 import 'settings_service.dart';
 
+/// Picked .msb / json file metadata for import UI.
+typedef PickedMsbFile = ({
+  String content,
+  String type,
+  String displayName,
+  int size,
+  DateTime modifiedTime,
+});
+
 /// 导入导出服务
 class ImportExportService {
   final DatabaseService _databaseService;
@@ -480,7 +489,7 @@ class ImportExportService {
   }
 
   /// 打开文件选择器并返回文件内容和类型信息
-  Future<({String content, String type})?> pickFileAndGetType() async {
+  Future<PickedMsbFile?> pickFileAndGetType() async {
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
@@ -494,11 +503,18 @@ class ImportExportService {
 
       final file = File(result.files.single.path!);
       final content = await file.readAsString(encoding: utf8);
+      final stat = await file.stat();
 
       try {
         final Map<String, dynamic> data = jsonDecode(content);
         final type = data['type'] as String? ?? 'unknown';
-        return (content: content, type: type);
+        return (
+          content: content,
+          type: type,
+          displayName: p.basenameWithoutExtension(file.path),
+          size: stat.size,
+          modifiedTime: stat.modified,
+        );
       } catch (e) {
         return null;
       }
