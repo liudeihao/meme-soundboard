@@ -11,6 +11,9 @@ import '../services/audio_service.dart';
 import '../services/audio_trim_service.dart';
 import '../services/file_service.dart';
 import '../services/settings_service.dart';
+import '../l10n/app_localizations.dart';
+import '../utils/app_constants.dart';
+import '../utils/category_l10n.dart';
 
 /// 添加/编辑音效对话框
 class AddSoundDialog extends StatefulWidget {
@@ -101,8 +104,7 @@ class _AddSoundDialogState extends State<AddSoundDialog> {
       });
     });
 
-    // 设置默认分类为"默认"
-    _selectedCategory = '默认';
+    _selectedCategory = AppConstants.categoryDefault;
 
     if (widget.existingSound != null) {
       final sound = widget.existingSound!;
@@ -208,9 +210,10 @@ class _AddSoundDialogState extends State<AddSoundDialog> {
       });
     } catch (e) {
       if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
+        final msg = e.toString().replaceFirst('Exception: ', '');
         setState(() {
-          _previewValidationError =
-              '片段预览失败: ${e.toString().replaceFirst('Exception: ', '')}';
+          _previewValidationError = l10n.trimPreviewFailed(msg);
           _trimPreviewPlaying = false;
         });
       }
@@ -218,7 +221,10 @@ class _AddSoundDialogState extends State<AddSoundDialog> {
   }
 
   List<String> get _availableCategories {
-    return ['默认', ...SettingsService.instance.customCategories];
+    return [
+      AppConstants.categoryDefault,
+      ...SettingsService.instance.customCategories,
+    ];
   }
 
   Future<void> _handleSelectAudio() async {
@@ -303,10 +309,11 @@ class _AddSoundDialogState extends State<AddSoundDialog> {
 
   /// 预览播放音频
   Future<void> _previewAudio() async {
+    final l10n = AppLocalizations.of(context)!;
     final audioPath = _effectiveAudioPath;
 
     if (audioPath == null) {
-      setState(() => _previewValidationError = '请先选择音频文件或输入链接');
+      setState(() => _previewValidationError = l10n.pickAudioFirst);
       return;
     }
 
@@ -339,7 +346,7 @@ class _AddSoundDialogState extends State<AddSoundDialog> {
         final file = File(audioPath);
         if (!await file.exists()) {
           setState(() {
-            _previewValidationError = '音频文件不存在或已被删除';
+            _previewValidationError = l10n.fileNotExist;
             _isLoading = false;
           });
           return;
@@ -350,7 +357,7 @@ class _AddSoundDialogState extends State<AddSoundDialog> {
       // 重要：已下载的 URL 音频应该作为本地文件播放，而不是 URL
       final tempSound = SoundItem(
         id: 'preview_${DateTime.now().millisecondsSinceEpoch}',
-        name: '预览',
+        name: l10n.previewName,
         soundPath: effectivePath,
         category: '',
         imagePath: null,
@@ -374,33 +381,32 @@ class _AddSoundDialogState extends State<AddSoundDialog> {
         _hasPreviewedAudio = true; // 标记已成功预览
       });
     } catch (e) {
+      final msg = e.toString().replaceFirst('Exception: ', '');
       setState(() {
-        _previewValidationError =
-            '播放失败: ${e.toString().replaceFirst('Exception: ', '')}';
+        _previewValidationError = l10n.playbackFailed(msg);
         _isLoading = false;
       });
     }
   }
 
   Future<void> _handleConfirm() async {
+    final l10n = AppLocalizations.of(context)!;
     final audioPath = _effectiveAudioPath;
 
-    // 验证：新增时必须有音频
     if (widget.existingSound == null && audioPath == null) {
-      setState(() => _errorMessage = '请选择音频文件或输入音频链接');
+      setState(() => _errorMessage = l10n.pickAudioFirst);
       return;
     }
 
     if (_nameController.text.trim().isEmpty) {
-      setState(() => _errorMessage = '请输入音效名称');
+      setState(() => _errorMessage = l10n.needSoundName);
       return;
     }
 
-    // URL 格式验证
     if (_useAudioUrl && audioPath != null) {
       if (!audioPath.startsWith('http://') &&
           !audioPath.startsWith('https://')) {
-        setState(() => _errorMessage = '音频链接必须以 http:// 或 https:// 开头');
+        setState(() => _errorMessage = l10n.urlMustHttp);
         return;
       }
     }
@@ -466,7 +472,7 @@ class _AddSoundDialogState extends State<AddSoundDialog> {
     }
   }
 
-  Widget _buildAudioTrimPanel(ThemeData theme) {
+  Widget _buildAudioTrimPanel(ThemeData theme, AppLocalizations l10n) {
     final src = _trimLocalSourcePath;
     if (src == null) {
       return const SizedBox.shrink();
@@ -481,7 +487,7 @@ class _AddSoundDialogState extends State<AddSoundDialog> {
             children: [
               Icon(Icons.content_cut_rounded, size: 20, color: theme.primaryColor),
               const SizedBox(width: 8),
-              const Text('截取片段', style: TextStyle(fontWeight: FontWeight.w600)),
+              Text(l10n.trimSectionTitle, style: const TextStyle(fontWeight: FontWeight.w600)),
             ],
           ),
           if (_durationProbeInProgress)
@@ -494,7 +500,7 @@ class _AddSoundDialogState extends State<AddSoundDialog> {
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Text(
-                '无法读取时长，将保存完整音频。',
+                l10n.trimCannotReadDuration,
                 style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
               ),
             )
@@ -544,13 +550,13 @@ class _AddSoundDialogState extends State<AddSoundDialog> {
                             : Icons.play_circle_outline_rounded,
                       ),
                       label: Text(
-                        _trimPreviewPlaying ? '停止片段' : '试听片段',
+                        _trimPreviewPlaying ? l10n.trimPreviewStop : l10n.trimPreviewPlay,
                       ),
                     ),
                     Padding(
                       padding: const EdgeInsets.only(top: 6),
                       child: Text(
-                        '添加时将仅保留所选区间（导出为 M4A）。Windows / Linux 需已安装 ffmpeg。',
+                        l10n.trimHint,
                         style: TextStyle(
                           color: Colors.grey.shade600,
                           fontSize: 12,
@@ -569,6 +575,7 @@ class _AddSoundDialogState extends State<AddSoundDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
     final isEditing = widget.existingSound != null;
 
     return Dialog(
@@ -629,15 +636,15 @@ class _AddSoundDialogState extends State<AddSoundDialog> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // 标题
-                    _buildHeader(theme, isEditing),
+                    _buildHeader(theme, isEditing, l10n),
 
                     const SizedBox(height: 20),
 
                     // 音频来源选择（仅新增时显示）
                     if (!isEditing) ...[
                       _buildSourceToggle(
-                        label: '音频来源',
+                        l10n: l10n,
+                        label: l10n.audioSource,
                         useUrl: _useAudioUrl,
                         onChanged: (val) => setState(() {
                           // 切换音频来源时停止当前预览
@@ -672,7 +679,7 @@ class _AddSoundDialogState extends State<AddSoundDialog> {
                                 Expanded(
                                   child: _buildUrlInput(
                                     controller: _audioUrlController,
-                                    hint: '输入音频链接 (http:// 或 https://)',
+                                    hint: l10n.audioUrlHint,
                                     icon: Icons.link_rounded,
                                   ),
                                 ),
@@ -691,12 +698,11 @@ class _AddSoundDialogState extends State<AddSoundDialog> {
                                         _previewValidationError = null;
                                         _hasPreviewedAudio = false;
                                       }),
-                                      tooltip: '清空链接',
+                                      tooltip: l10n.clearLink,
                                     ),
                                   ),
                               ],
                             ),
-                            // 预览错误消息
                             if (_previewValidationError != null)
                               Padding(
                                 padding: const EdgeInsets.only(top: 8),
@@ -732,8 +738,8 @@ class _AddSoundDialogState extends State<AddSoundDialog> {
                                   ),
                                   label: Text(
                                     _isLoading
-                                        ? '加载中...'
-                                        : (_isPreviewPlaying ? '停止播放' : '预览'),
+                                        ? l10n.loading
+                                        : (_isPreviewPlaying ? l10n.stopPlayback : l10n.preview),
                                   ),
                                 ),
                               ),
@@ -746,8 +752,8 @@ class _AddSoundDialogState extends State<AddSoundDialog> {
                             _buildFileSelector(
                               icon: Icons.audiotrack_rounded,
                               label: _selectedAudioPath != null
-                                  ? '已选择: ${_selectedAudioPath!}'
-                                  : '选择音频文件 *',
+                                  ? l10n.pickedAudio(_selectedAudioPath!)
+                                  : l10n.pickAudioFile,
                               isSelected: _selectedAudioPath != null,
                               onTap: _handleSelectAudio,
                               isRequired: true,
@@ -787,21 +793,22 @@ class _AddSoundDialogState extends State<AddSoundDialog> {
                                   ),
                                   label: Text(
                                     _isLoading
-                                        ? '加载中...'
-                                        : (_isPreviewPlaying ? '停止播放' : '预览'),
+                                        ? l10n.loading
+                                        : (_isPreviewPlaying ? l10n.stopPlayback : l10n.preview),
                                   ),
                                 ),
                               ),
                           ],
                         ),
                       if (!kIsWeb && widget.existingSound == null)
-                        _buildAudioTrimPanel(theme),
+                        _buildAudioTrimPanel(theme, l10n),
                       const SizedBox(height: 16),
                     ],
 
                     // 图片来源选择
                     _buildSourceToggle(
-                      label: '封面图片',
+                      l10n: l10n,
+                      label: l10n.coverImage,
                       useUrl: _useImageUrl,
                       onChanged: (val) => setState(() {
                         _useImageUrl = val;
@@ -818,7 +825,7 @@ class _AddSoundDialogState extends State<AddSoundDialog> {
                           Expanded(
                             child: _buildUrlInput(
                               controller: _imageUrlController,
-                              hint: '输入图片链接 (可选)',
+                              hint: l10n.imageUrlHint,
                               icon: Icons.image_rounded,
                             ),
                           ),
@@ -830,7 +837,7 @@ class _AddSoundDialogState extends State<AddSoundDialog> {
                                 onPressed: () => setState(() {
                                   _imageUrlController.clear();
                                 }),
-                                tooltip: '清空链接',
+                                tooltip: l10n.clearLink,
                               ),
                             ),
                         ],
@@ -841,8 +848,8 @@ class _AddSoundDialogState extends State<AddSoundDialog> {
                           _buildFileSelector(
                             icon: Icons.image_rounded,
                             label: _effectiveImagePath != null
-                                ? '已选择封面图片'
-                                : '选择封面图片 (可选)',
+                                ? l10n.coverSelected
+                                : l10n.pickCoverOptional,
                             isSelected: _effectiveImagePath != null,
                             onTap: _handleSelectImage,
                             previewImage: _selectedImagePath,
@@ -871,7 +878,7 @@ class _AddSoundDialogState extends State<AddSoundDialog> {
                                     _selectedImagePath = null;
                                     _imageUrlController.clear();
                                   }),
-                                  tooltip: '删除封面图片',
+                                  tooltip: l10n.removeCover,
                                 ),
                               ),
                             ),
@@ -880,12 +887,11 @@ class _AddSoundDialogState extends State<AddSoundDialog> {
 
                     const SizedBox(height: 16),
 
-                    // 名称输入框
                     TextField(
                       controller: _nameController,
                       decoration: InputDecoration(
-                        labelText: '音效名称',
-                        hintText: '输入音效名称',
+                        labelText: l10n.soundName,
+                        hintText: l10n.soundNameHint,
                         prefixIcon: const Icon(Icons.label_rounded),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -897,18 +903,15 @@ class _AddSoundDialogState extends State<AddSoundDialog> {
 
                     const SizedBox(height: 16),
 
-                    // 分类选择
-                    _buildCategorySelector(theme),
+                    _buildCategorySelector(theme, l10n),
 
                     const SizedBox(height: 16),
 
-                    // 高级设置折叠面板
-                    _buildAdvancedSettingsPanel(theme),
+                    _buildAdvancedSettingsPanel(theme, l10n),
 
                     const SizedBox(height: 24),
 
-                    // 确认按钮
-                    _buildConfirmButton(isEditing),
+                    _buildConfirmButton(isEditing, l10n),
                   ],
                 ),
               ),
@@ -919,7 +922,7 @@ class _AddSoundDialogState extends State<AddSoundDialog> {
     );
   }
 
-  Widget _buildHeader(ThemeData theme, bool isEditing) {
+  Widget _buildHeader(ThemeData theme, bool isEditing, AppLocalizations l10n) {
     return Row(
       children: [
         Container(
@@ -936,7 +939,7 @@ class _AddSoundDialogState extends State<AddSoundDialog> {
         const SizedBox(width: 12),
         Expanded(
           child: Text(
-            isEditing ? '编辑音效' : '添加音效',
+            isEditing ? l10n.editSoundTitle : l10n.addSoundTitle,
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
         ),
@@ -949,6 +952,7 @@ class _AddSoundDialogState extends State<AddSoundDialog> {
   }
 
   Widget _buildSourceToggle({
+    required AppLocalizations l10n,
     required String label,
     required bool useUrl,
     required ValueChanged<bool> onChanged,
@@ -958,16 +962,16 @@ class _AddSoundDialogState extends State<AddSoundDialog> {
         Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
         const Spacer(),
         SegmentedButton<bool>(
-          segments: const [
+          segments: [
             ButtonSegment(
               value: false,
-              label: Text('文件'),
-              icon: Icon(Icons.folder_rounded, size: 16),
+              label: Text(l10n.sourceFile),
+              icon: const Icon(Icons.folder_rounded, size: 16),
             ),
             ButtonSegment(
               value: true,
-              label: Text('链接'),
-              icon: Icon(Icons.link_rounded, size: 16),
+              label: Text(l10n.sourceUrl),
+              icon: const Icon(Icons.link_rounded, size: 16),
             ),
           ],
           selected: {useUrl},
@@ -998,7 +1002,7 @@ class _AddSoundDialogState extends State<AddSoundDialog> {
     );
   }
 
-  Widget _buildCategorySelector(ThemeData theme) {
+  Widget _buildCategorySelector(ThemeData theme, AppLocalizations l10n) {
     if (_showNewCategoryInput) {
       return Row(
         children: [
@@ -1006,8 +1010,8 @@ class _AddSoundDialogState extends State<AddSoundDialog> {
             child: TextField(
               controller: _newCategoryController,
               decoration: InputDecoration(
-                labelText: '新分类名称',
-                hintText: '输入新分类名称',
+                labelText: l10n.newCategoryName,
+                hintText: l10n.newCategoryHint,
                 prefixIcon: const Icon(Icons.create_new_folder_rounded),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -1023,7 +1027,7 @@ class _AddSoundDialogState extends State<AddSoundDialog> {
               _newCategoryController.clear();
             }),
             icon: const Icon(Icons.close_rounded),
-            tooltip: '取消',
+            tooltip: l10n.cancel,
           ),
         ],
       );
@@ -1037,7 +1041,7 @@ class _AddSoundDialogState extends State<AddSoundDialog> {
                 ? _selectedCategory
                 : _availableCategories.first,
             decoration: InputDecoration(
-              labelText: '分类',
+              labelText: l10n.categoryLabel,
               prefixIcon: const Icon(Icons.folder_rounded),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -1045,7 +1049,10 @@ class _AddSoundDialogState extends State<AddSoundDialog> {
               filled: true,
             ),
             items: _availableCategories.map((category) {
-              return DropdownMenuItem(value: category, child: Text(category));
+              return DropdownMenuItem(
+                value: category,
+                child: Text(l10n.categoryLabelForStored(category)),
+              );
             }).toList(),
             onChanged: (value) {
               if (value != null) setState(() => _selectedCategory = value);
@@ -1063,20 +1070,20 @@ class _AddSoundDialogState extends State<AddSoundDialog> {
             ),
             child: Icon(Icons.add_rounded, color: theme.primaryColor),
           ),
-          tooltip: '新建分类',
+          tooltip: l10n.newCategory,
         ),
       ],
     );
   }
 
-  Widget _buildAdvancedSettingsPanel(ThemeData theme) {
+  Widget _buildAdvancedSettingsPanel(ThemeData theme, AppLocalizations l10n) {
     return ExpansionTile(
       tilePadding: EdgeInsets.zero,
       title: Row(
         children: [
           const Icon(Icons.tune_rounded, size: 20),
           const SizedBox(width: 8),
-          const Text('音效设置'),
+          Text(l10n.soundSettings),
         ],
       ),
       children: [
@@ -1105,8 +1112,7 @@ class _AddSoundDialogState extends State<AddSoundDialog> {
     );
   }
 
-  Widget _buildConfirmButton(bool isEditing) {
-    // 新增音效时，必须先预览才能添加
+  Widget _buildConfirmButton(bool isEditing, AppLocalizations l10n) {
     final canConfirm = isEditing || _hasPreviewedAudio;
 
     return ElevatedButton(
@@ -1122,7 +1128,9 @@ class _AddSoundDialogState extends State<AddSoundDialog> {
               child: CircularProgressIndicator(strokeWidth: 2),
             )
           : Text(
-              isEditing ? '保存更改' : (!canConfirm ? '请先预览音频' : '添加音效'),
+              isEditing
+                  ? l10n.saveChanges
+                  : (!canConfirm ? l10n.previewAudioFirst : l10n.addSoundButton),
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
     );

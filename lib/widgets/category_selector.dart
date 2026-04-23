@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 import '../utils/app_constants.dart';
+import '../utils/category_l10n.dart';
 import '../services/settings_service.dart';
 
 /// 分类选择器组件
@@ -15,7 +17,7 @@ class CategorySelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 使用设置服务中的所有分类
+    final l10n = AppLocalizations.of(context)!;
     final categories = SettingsService.instance.allCategories;
 
     return SizedBox(
@@ -63,7 +65,7 @@ class CategorySelector extends StatelessWidget {
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    category,
+                    l10n.categoryLabelForStored(category),
                     style: TextStyle(
                       color: isSelected ? Colors.white : color,
                       fontWeight: isSelected

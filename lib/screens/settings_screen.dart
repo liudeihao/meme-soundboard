@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 import '../services/settings_service.dart';
 import '../services/database_service.dart';
 import '../services/import_export_service.dart';
 import '../utils/app_constants.dart';
+import '../utils/category_l10n.dart';
 import 'export_manager_screen.dart';
 
 /// 设置页面
@@ -39,41 +41,74 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() {});
   }
 
+  String _themeSubtitle(AppLocalizations l10n) {
+    switch (_settings.themeMode) {
+      case ThemeMode.system:
+        return l10n.themeFollowSystem;
+      case ThemeMode.light:
+        return l10n.themeLight;
+      case ThemeMode.dark:
+        return l10n.themeDark;
+    }
+  }
+
+  String _uiLocaleSubtitle(AppLocalizations l10n) {
+    switch (_settings.uiLocale) {
+      case SettingsService.uiLocaleZh:
+        return l10n.languageZh;
+      case SettingsService.uiLocaleEn:
+        return l10n.languageEn;
+      default:
+        return l10n.languageSystem;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
-      appBar: AppBar(title: const Text('设置'), centerTitle: true),
+      appBar: AppBar(title: Text(l10n.settings), centerTitle: true),
       body: ListView(
         children: [
-          // 外观设置
-          _buildSectionHeader(context, '外观'),
+          _buildSectionHeader(context, l10n.sectionAppearance),
           _buildListTile(
             context,
             icon: Icons.palette_rounded,
             iconColor: Colors.purple,
-            title: '主题模式',
-            subtitle: _settings.getThemeModeText(),
+            title: l10n.themeMode,
+            subtitle: _themeSubtitle(l10n),
             onTap: () => _showThemeModeDialog(context),
           ),
           _buildListTile(
             context,
             icon: Icons.grid_view_rounded,
             iconColor: Colors.blue,
-            title: '网格列数',
-            subtitle: '${_settings.gridColumns} 列',
+            title: l10n.gridColumns,
+            subtitle: l10n.columnsCount(_settings.gridColumns),
             onTap: () => _showGridColumnsDialog(context),
           ),
 
           const Divider(height: 32),
 
-          // 音频设置
-          _buildSectionHeader(context, '音频'),
+          _buildSectionHeader(context, l10n.sectionLanguage),
+          _buildListTile(
+            context,
+            icon: Icons.language_rounded,
+            iconColor: Colors.indigo,
+            title: l10n.language,
+            subtitle: _uiLocaleSubtitle(l10n),
+            onTap: () => _showUiLocaleDialog(context),
+          ),
+
+          const Divider(height: 32),
+
+          _buildSectionHeader(context, l10n.sectionAudio),
           _buildSwitchTile(
             context,
             icon: Icons.vibration_rounded,
             iconColor: Colors.orange,
-            title: '触觉反馈',
-            subtitle: '点击按钮时震动',
+            title: l10n.hapticFeedback,
+            subtitle: l10n.hapticFeedbackDesc,
             value: _settings.hapticFeedback,
             onChanged: (value) => _settings.setHapticFeedback(value),
           ),
@@ -81,78 +116,75 @@ class _SettingsScreenState extends State<SettingsScreen> {
             context,
             icon: Icons.multitrack_audio_rounded,
             iconColor: Colors.green,
-            title: '同时播放',
-            subtitle: '开启后点击新音效不会中断正在播放的音效',
+            title: l10n.allowMultiPlay,
+            subtitle: l10n.allowMultiPlayDesc,
             value: _settings.allowMultiPlay,
             onChanged: (value) => _settings.setAllowMultiPlay(value),
           ),
 
           const Divider(height: 32),
 
-          // 分类管理
-          _buildSectionHeader(context, '音效'),
+          _buildSectionHeader(context, l10n.sectionSounds),
           _buildListTile(
             context,
             icon: Icons.music_note_rounded,
             iconColor: Colors.blue,
-            title: '导入示例音效包',
-            subtitle: '导入精选示例音效',
+            title: l10n.importSamplePack,
+            subtitle: l10n.importSamplePackDesc,
             onTap: () => _showImportSamplesDialog(context),
           ),
           _buildListTile(
             context,
             icon: Icons.play_circle_outline_rounded,
             iconColor: Colors.green,
-            title: '启动时显示的分类',
-            subtitle: _settings.startupCategory,
+            title: l10n.startupCategory,
+            subtitle: l10n.categoryLabelForStored(_settings.startupCategory),
             onTap: () => _showStartupCategoryDialog(context),
           ),
 
           const Divider(height: 32),
 
-          // 数据导出
-          _buildSectionHeader(context, '数据导出'),
+          _buildSectionHeader(context, l10n.sectionDataExport),
           _buildListTile(
             context,
             icon: Icons.folder_open_rounded,
             iconColor: Colors.amber,
-            title: '管理导出文件',
-            subtitle: '查看、分享、导入导出的文件',
+            title: l10n.manageExportFiles,
+            subtitle: l10n.manageExportFilesDesc,
             onTap: () => _openExportDirectory(context),
           ),
 
           const Divider(height: 32),
 
-          _buildSectionHeader(context, '分类管理'),
+          _buildSectionHeader(context, l10n.sectionCategoryMgmt),
           _buildListTile(
             context,
             icon: Icons.folder_special_rounded,
             iconColor: Colors.teal,
-            title: '自定义分类',
+            title: l10n.customCategories,
             subtitle: _settings.customCategories.isEmpty
-                ? '暂无自定义分类'
-                : '${_settings.customCategories.length} 个自定义分类',
+                ? l10n.customCategoriesEmpty
+                : l10n.customCategoriesCount(_settings.customCategories.length),
             onTap: () => _showCategoriesDialog(context),
           ),
           _buildListTile(
             context,
             icon: Icons.swap_vert_rounded,
             iconColor: Colors.deepOrange,
-            title: '分类显示顺序',
-            subtitle: '调整主页分类的显示顺序',
+            title: l10n.categoryOrder,
+            subtitle: l10n.categoryOrderDesc,
             onTap: () => _showCategoriesOrderDialog(context),
           ),
 
           const Divider(height: 32),
 
-          // 关于
-          _buildSectionHeader(context, '关于'),
+          _buildSectionHeader(context, l10n.about),
           _buildListTile(
             context,
             icon: Icons.info_rounded,
             iconColor: Colors.teal,
-            title: '版本',
-            subtitle: '1.0.0',
+            title: l10n.version,
+            subtitle: l10n.versionNumber,
             onTap: () {},
           ),
 
@@ -225,35 +257,98 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showThemeModeDialog(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('选择主题模式'),
+        title: Text(l10n.selectThemeMode),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             _buildThemeOption(
               context,
               ThemeMode.system,
-              '跟随系统',
+              l10n.themeFollowSystem,
               Icons.brightness_auto_rounded,
             ),
             _buildThemeOption(
               context,
               ThemeMode.light,
-              '浅色模式',
+              l10n.themeLight,
               Icons.light_mode_rounded,
             ),
             _buildThemeOption(
               context,
               ThemeMode.dark,
-              '深色模式',
+              l10n.themeDark,
               Icons.dark_mode_rounded,
             ),
           ],
         ),
       ),
+    );
+  }
+
+  void _showUiLocaleDialog(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(l10n.selectLanguage),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildUiLocaleOption(
+              dialogContext,
+              SettingsService.uiLocaleSystem,
+              l10n.languageSystem,
+              Icons.language_rounded,
+            ),
+            _buildUiLocaleOption(
+              dialogContext,
+              SettingsService.uiLocaleZh,
+              l10n.languageZh,
+              Icons.translate_rounded,
+            ),
+            _buildUiLocaleOption(
+              dialogContext,
+              SettingsService.uiLocaleEn,
+              l10n.languageEn,
+              Icons.text_fields_rounded,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUiLocaleOption(
+    BuildContext context,
+    String code,
+    String label,
+    IconData icon,
+  ) {
+    final isSelected = _settings.uiLocale == code;
+    final theme = Theme.of(context);
+
+    return ListTile(
+      leading: Icon(icon, color: isSelected ? theme.primaryColor : Colors.grey),
+      title: Text(
+        label,
+        style: TextStyle(
+          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+          color: isSelected ? theme.primaryColor : null,
+        ),
+      ),
+      trailing: isSelected
+          ? Icon(Icons.check_rounded, color: theme.primaryColor)
+          : null,
+      onTap: () {
+        _settings.setUiLocale(code);
+        Navigator.pop(context);
+      },
     );
   }
 
@@ -286,11 +381,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showGridColumnsDialog(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('选择网格列数'),
+        title: Text(l10n.selectGridColumns),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [2, 3, 4, 5].map((columns) {
@@ -303,7 +399,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 color: isSelected ? theme.primaryColor : Colors.grey,
               ),
               title: Text(
-                '$columns 列',
+                l10n.columnsCount(columns),
                 style: TextStyle(
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                   color: isSelected ? theme.primaryColor : null,
@@ -324,14 +420,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showStartupCategoryDialog(BuildContext context) {
-    // 获取所有可用的分类选项
-    final categories = ['全部', '收藏', ..._settings.customCategories];
+    final l10n = AppLocalizations.of(context)!;
+    final categories = [
+      AppConstants.categoryAll,
+      AppConstants.categoryFavorites,
+      ..._settings.customCategories,
+    ];
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('启动时显示的分类'),
+        title: Text(l10n.startupCategory),
         content: SizedBox(
           width: double.maxFinite,
           child: ListView.builder(
@@ -352,7 +452,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   color: isSelected ? theme.primaryColor : Colors.grey,
                 ),
                 title: Text(
-                  category,
+                  l10n.categoryLabelForStored(category),
                   style: TextStyle(
                     fontWeight: isSelected
                         ? FontWeight.w600
@@ -376,6 +476,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showCategoriesDialog(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final controller = TextEditingController();
 
     showDialog(
@@ -385,7 +486,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title: const Text('管理分类'),
+          title: Text(l10n.manageCategories),
           content: SizedBox(
             width: double.maxFinite,
             child: Column(
@@ -398,7 +499,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       child: TextField(
                         controller: controller,
                         decoration: InputDecoration(
-                          hintText: '输入新分类名称',
+                          hintText: l10n.newCategoryHint,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -429,11 +530,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                 // 分类列表
                 if (_settings.customCategories.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.all(16),
+                  Padding(
+                    padding: const EdgeInsets.all(16),
                     child: Text(
-                      '暂无自定义分类',
-                      style: TextStyle(color: Colors.grey),
+                      l10n.customCategoriesEmpty,
+                      style: const TextStyle(color: Colors.grey),
                     ),
                   )
                 else
@@ -469,7 +570,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('完成'),
+              child: Text(l10n.done),
             ),
           ],
         ),
@@ -479,6 +580,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   /// 显示删除分类对话框
   Future<void> _showDeleteCategoryDialog(String category) async {
+    final l10n = AppLocalizations.of(context)!;
     final soundsInCategory = await _databaseService.getSoundsByCategory(
       category,
     );
@@ -490,12 +592,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('删除分类'),
+        title: Text(l10n.deleteCategoryTitle),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('确定要删除分类 "$category" 吗？'),
+            Text(l10n.deleteCategoryConfirm(category)),
             const SizedBox(height: 12),
             if (soundsInCategory.isNotEmpty)
               Container(
@@ -509,50 +611,51 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '该分类下有 ${soundsInCategory.length} 个音效',
+                      l10n.deleteCategoryHasSounds(soundsInCategory.length),
                       style: const TextStyle(fontWeight: FontWeight.w500),
                     ),
                     const SizedBox(height: 8),
-                    const Text(
-                      '请选择处理方式：',
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    Text(
+                      l10n.deleteCategoryChooseAction,
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
                     ),
                   ],
                 ),
               )
             else
-              const Text(
-                '该分类下没有音效，删除后无法恢复。',
-                style: TextStyle(color: Colors.grey, fontSize: 12),
+              Text(
+                l10n.deleteCategoryNoSounds,
+                style: const TextStyle(color: Colors.grey, fontSize: 12),
               ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('取消'),
+            child: Text(l10n.cancel),
           ),
           if (soundsInCategory.isNotEmpty) ...[
-            // 移动到默认分类
             TextButton(
               onPressed: () async {
                 Navigator.pop(dialogContext);
-                await _databaseService.migrateCategoryForSounds(category, '默认');
+                await _databaseService.migrateCategoryForSounds(
+                  category,
+                  AppConstants.categoryDefault,
+                );
                 await _settings.removeCategory(category);
                 _onDataChanged?.call();
                 if (!mounted) return;
                 scaffoldMessenger.showSnackBar(
                   SnackBar(
                     content: Text(
-                      '已将 ${soundsInCategory.length} 个音效移至"默认"分类',
+                      l10n.movedToDefaultSnack(soundsInCategory.length),
                     ),
                     behavior: SnackBarBehavior.floating,
                   ),
                 );
               },
-              child: const Text('移到默认分类'),
+              child: Text(l10n.moveToDefaultCategory),
             ),
-            // 删除分类和音效
             TextButton(
               onPressed: () async {
                 Navigator.pop(dialogContext);
@@ -562,17 +665,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 if (!mounted) return;
                 scaffoldMessenger.showSnackBar(
                   SnackBar(
-                    content: Text('已删除分类及其下的 ${soundsInCategory.length} 个音效'),
+                    content: Text(
+                      l10n.deletedCategoryAndSoundsSnack(
+                        soundsInCategory.length,
+                      ),
+                    ),
                     behavior: SnackBarBehavior.floating,
                     backgroundColor: Colors.red,
                   ),
                 );
               },
               style: TextButton.styleFrom(foregroundColor: Colors.red),
-              child: const Text('删除分类和音效'),
+              child: Text(l10n.deleteCategoryAndSounds),
             ),
           ] else
-            // 如果分类下没有音效，直接删除
             TextButton(
               onPressed: () async {
                 Navigator.pop(dialogContext);
@@ -580,7 +686,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _onDataChanged?.call();
               },
               style: TextButton.styleFrom(foregroundColor: Colors.red),
-              child: const Text('删除'),
+              child: Text(l10n.delete),
             ),
         ],
       ),
@@ -589,27 +695,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   /// 显示导入示例音效对话框
   Future<void> _showImportSamplesDialog(BuildContext context) async {
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text('导入示例音效包'),
-        content: const Text(
-          '是否导入示例音效包？\n\n'
-          '这是一套精心准备的精选音效，帮助您快速体验应用功能。\n\n'
-          '您也可以在"导出文件管理"中找到此音效包并随时导入。',
-        ),
+        title: Text(l10n.importSampleTitle),
+        content: Text(l10n.importSampleBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
+            child: Text(l10n.cancel),
           ),
           FilledButton(
             onPressed: () async {
               Navigator.pop(context);
               await _importSamplePack();
             },
-            child: const Text('导入'),
+            child: Text(l10n.import),
           ),
         ],
       ),
@@ -618,13 +721,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   /// 导入示例音效包（从预制的 .msb 文件导入）
   Future<void> _importSamplePack() async {
+    final l10n = AppLocalizations.of(context)!;
     try {
-      // 使用 ImportExportService 从 asset 导入示例音效包
       final result = await _importExportService.importFromAsset(
         AppConstants.samplePackAssetPath,
+        l10n: l10n,
       );
 
-      // 触发主屏幕的刷新回调
       _onDataChanged?.call();
 
       if (mounted) {
@@ -640,7 +743,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('导入失败: $e'),
+            content: Text(l10n.importFailedWith(e.toString())),
             behavior: SnackBarBehavior.floating,
             backgroundColor: Colors.red,
           ),
@@ -651,6 +754,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   /// 显示分类顺序调整对话框
   void _showCategoriesOrderDialog(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final categories = List<String>.from(_settings.allCategories);
 
     showDialog(
@@ -660,15 +764,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title: const Text('调整分类顺序'),
+          title: Text(l10n.reorderCategoriesTitle),
           content: SizedBox(
             width: double.maxFinite,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
-                  '长按拖动以调整顺序',
-                  style: TextStyle(
+                Text(
+                  l10n.reorderCategoriesHint,
+                  style: const TextStyle(
                     fontSize: 12,
                     color: Colors.grey,
                   ),
@@ -696,7 +800,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             Icons.drag_handle_rounded,
                             color: Theme.of(context).primaryColor,
                           ),
-                          title: Text(categories[i]),
+                          title: Text(l10n.categoryLabelForStored(categories[i])),
                           trailing: Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 10,
@@ -725,7 +829,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('取消'),
+              child: Text(l10n.cancel),
             ),
             FilledButton(
               onPressed: () async {
@@ -733,15 +837,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 if (context.mounted) {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('分类顺序已保存'),
+                    SnackBar(
+                      content: Text(l10n.categoryOrderSaved),
                       behavior: SnackBarBehavior.floating,
-                      duration: Duration(seconds: 2),
+                      duration: const Duration(seconds: 2),
                     ),
                   );
                 }
               },
-              child: const Text('保存'),
+              child: Text(l10n.save),
             ),
           ],
         ),

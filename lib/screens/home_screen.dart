@@ -14,6 +14,8 @@ import '../services/external_import_bridge.dart';
 import '../services/import_export_service.dart';
 import '../services/settings_service.dart';
 import '../utils/app_constants.dart';
+import '../utils/category_l10n.dart';
+import '../l10n/app_localizations.dart';
 import '../widgets/sound_button.dart';
 import '../widgets/category_selector.dart';
 import '../widgets/search_bar.dart' as custom;
@@ -160,9 +162,10 @@ class _HomeScreenState extends State<HomeScreen>
       final file = File(path);
       if (!await file.exists()) {
         if (showSnackOnFailure && mounted) {
+          final l10n = AppLocalizations.of(context)!;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('文件不存在'),
+              content: Text(l10n.importFileMissing),
               backgroundColor: Colors.red.shade700,
               behavior: SnackBarBehavior.floating,
               margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -178,7 +181,10 @@ class _HomeScreenState extends State<HomeScreen>
         data = jsonDecode(content) as Map<String, dynamic>;
       } catch (_) {
         if (showSnackOnFailure && mounted) {
-          _showSnackBar('不是有效的音效包文件', backgroundColor: Colors.red);
+          _showSnackBar(
+            AppLocalizations.of(context)!.notValidPackFile,
+            backgroundColor: Colors.red,
+          );
         }
         return false;
       }
@@ -187,7 +193,10 @@ class _HomeScreenState extends State<HomeScreen>
       final version = data['version'] as String?;
       if (version == null || type == 'unknown') {
         if (showSnackOnFailure && mounted) {
-          _showSnackBar('无效的导入文件格式', backgroundColor: Colors.red);
+          _showSnackBar(
+            AppLocalizations.of(context)!.invalidImportFormat,
+            backgroundColor: Colors.red,
+          );
         }
         return false;
       }
@@ -207,7 +216,8 @@ class _HomeScreenState extends State<HomeScreen>
       return _continueMsbImportFlow(content, type);
     } catch (e) {
       if (showSnackOnFailure && mounted) {
-        _showSnackBar('导入失败: $e', backgroundColor: Colors.red);
+        final l10n = AppLocalizations.of(context)!;
+        _showSnackBar(l10n.importFailed(e.toString()), backgroundColor: Colors.red);
       }
       return false;
     }
@@ -225,7 +235,10 @@ class _HomeScreenState extends State<HomeScreen>
         return _showFullBackupImportDialog(fileContent);
       default:
         if (mounted) {
-          _showSnackBar('未知的文件类型', backgroundColor: Colors.red);
+          _showSnackBar(
+            AppLocalizations.of(context)!.unknownFileType,
+            backgroundColor: Colors.red,
+          );
         }
         return false;
     }
@@ -397,9 +410,9 @@ class _HomeScreenState extends State<HomeScreen>
       }).toList();
     });
 
-    // 显示反馈
+    final l10n = AppLocalizations.of(context)!;
     _showSnackBar(
-      newFavorite ? '已添加到收藏' : '已取消收藏',
+      newFavorite ? l10n.toastFavoriteAdded : l10n.toastFavoriteRemoved,
       duration: const Duration(seconds: 1),
     );
   }
@@ -439,6 +452,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   /// 显示音效详情
   void _showSoundDetails(SoundItem sound) {
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       barrierColor: Colors.black.withAlpha(102),
@@ -457,20 +471,26 @@ class _HomeScreenState extends State<HomeScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              _buildDetailRow('名称', sound.name),
-              _buildDetailRow('分类', sound.category),
-              _buildDetailRow('收藏', sound.isFavorite ? '是' : '否'),
+              _buildDetailRow(l10n.detailName, sound.name),
               _buildDetailRow(
-                '来源类型',
+                l10n.detailCategory,
+                l10n.categoryLabelForStored(sound.category),
+              ),
+              _buildDetailRow(
+                l10n.detailFavorite,
+                sound.isFavorite ? l10n.favoriteYes : l10n.favoriteNo,
+              ),
+              _buildDetailRow(
+                l10n.detailSourceType,
                 sound.sourceType == SoundSourceType.asset
-                    ? '内置资源'
+                    ? l10n.sourceTypeBuiltin
                     : sound.sourceType == SoundSourceType.file
-                    ? '本地文件'
-                    : '网络链接',
+                    ? l10n.sourceTypeLocalFile
+                    : l10n.sourceTypeNetwork,
               ),
               if (sound.soundPath.isNotEmpty)
                 _buildDetailRow(
-                  '音频路径',
+                  l10n.detailSoundPath,
                   sound.soundPath.length > 50
                       ? '...${sound.soundPath.substring(sound.soundPath.length - 50)}'
                       : sound.soundPath,
@@ -478,7 +498,7 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
               if (sound.imagePath != null)
                 _buildDetailRow(
-                  '图片路径',
+                  l10n.detailImagePath,
                   sound.imagePath!.length > 50
                       ? '...${sound.imagePath!.substring(sound.imagePath!.length - 50)}'
                       : sound.imagePath!,
@@ -491,7 +511,7 @@ class _HomeScreenState extends State<HomeScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('关闭'),
+            child: Text(l10n.close),
           ),
         ],
       ),
@@ -538,12 +558,16 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void> _copyToClipboard(String text) async {
     await Clipboard.setData(ClipboardData(text: text));
     if (mounted) {
-      _showSnackBarWithIcon('已复制到剪切板', Icons.check_rounded);
+      _showSnackBarWithIcon(
+        AppLocalizations.of(context)!.clipboardCopied,
+        Icons.check_rounded,
+      );
     }
   }
 
   /// 添加新音效
   Future<void> _addNewSound() async {
+    final l10n = AppLocalizations.of(context)!;
     String? tempSoundPath;
     String? tempImagePath;
     Color? dominantColor;
@@ -591,7 +615,7 @@ class _HomeScreenState extends State<HomeScreen>
 
               var effectiveSoundPath = soundPath ?? tempSoundPath;
               if (effectiveSoundPath == null) {
-                throw Exception('请先选择音频文件或输入链接');
+                throw Exception(l10n.exceptionPickAudioFirst);
               }
 
               // 如果是 URL 音效，先下载并保存到本地
@@ -603,7 +627,7 @@ class _HomeScreenState extends State<HomeScreen>
                   effectiveSoundPath = downloaded;
                 } catch (e) {
                   final errorMsg = e.toString().replaceFirst('Exception: ', '');
-                  throw Exception('下载音频失败:\n$errorMsg');
+                  throw Exception(l10n.downloadAudioFailed(errorMsg));
                 }
               }
 
@@ -637,7 +661,7 @@ class _HomeScreenState extends State<HomeScreen>
                     } catch (e) {
                       final msg =
                           e.toString().replaceFirst('Exception: ', '');
-                      throw Exception('音频截取失败:\n$msg');
+                      throw Exception(l10n.audioTrimFailed(msg));
                     }
                   }
                 }
@@ -710,7 +734,7 @@ class _HomeScreenState extends State<HomeScreen>
     );
 
     if (result == true && mounted) {
-      _showSnackBar('音效添加成功！');
+      _showSnackBar(AppLocalizations.of(context)!.soundAddedSuccess);
     }
   }
 
@@ -832,7 +856,7 @@ class _HomeScreenState extends State<HomeScreen>
     });
 
     if (mounted) {
-      _showSnackBar('已删除');
+      _showSnackBar(AppLocalizations.of(context)!.soundDeleted);
     }
   }
 
@@ -854,7 +878,10 @@ class _HomeScreenState extends State<HomeScreen>
       _lastBackPressTime = now;
       
       if (mounted) {
-        _showSnackBar('再按一次返回键退出应用', duration: const Duration(seconds: 2));
+        _showSnackBar(
+          AppLocalizations.of(context)!.pressAgainToExit,
+          duration: const Duration(seconds: 2),
+        );
       }
     } else {
       // 两次按下时间间隔小于2秒，退出应用
@@ -927,6 +954,7 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
 
     return PopScope(
       canPop: false,
@@ -939,10 +967,11 @@ class _HomeScreenState extends State<HomeScreen>
           child: Column(
             children: [
               // 顶部标题栏
-              _buildAppBar(theme),
+              _buildAppBar(theme, l10n),
 
               // 搜索栏
               custom.SearchBar(
+                hintText: l10n.searchHint,
                 onSearch: (query) {
                   setState(() {
                     _searchQuery = query;
@@ -1047,7 +1076,7 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _buildAppBar(ThemeData theme) {
+  Widget _buildAppBar(ThemeData theme, AppLocalizations l10n) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 16, 8),
       child: Row(
@@ -1080,7 +1109,7 @@ class _HomeScreenState extends State<HomeScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '梗音效',
+                  l10n.appTitle,
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
@@ -1088,7 +1117,7 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                 ),
                 Text(
-                  '${_allSounds.length} 个音效',
+                  l10n.soundCount(_allSounds.length),
                   style: TextStyle(
                     fontSize: 13,
                     color: theme.colorScheme.onSurface.withAlpha(153),
@@ -1115,7 +1144,7 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                   child: const Icon(Icons.stop_rounded, color: Colors.red),
                 ),
-                tooltip: '停止所有音效',
+                tooltip: l10n.stopAllSounds,
               );
             },
           ),
@@ -1127,7 +1156,6 @@ class _HomeScreenState extends State<HomeScreen>
             ),
             onSelected: (value) => _handleMenuAction(value),
             itemBuilder: (context) => [
-              // 多选模式
               PopupMenuItem(
                 value: 'selection_mode',
                 child: ListTile(
@@ -1136,54 +1164,56 @@ class _HomeScreenState extends State<HomeScreen>
                         ? Icons.check_box_rounded
                         : Icons.select_all_rounded,
                   ),
-                  title: Text(_isSelectionMode ? '退出多选' : '多选'),
+                  title: Text(
+                    _isSelectionMode ? l10n.exitMultiSelect : l10n.multiSelect,
+                  ),
                   contentPadding: EdgeInsets.zero,
                   dense: true,
                 ),
               ),
               const PopupMenuDivider(),
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: 'import',
                 child: ListTile(
-                  leading: Icon(Icons.file_download_rounded),
-                  title: Text('导入音效'),
+                  leading: const Icon(Icons.file_download_rounded),
+                  title: Text(l10n.importSounds),
                   contentPadding: EdgeInsets.zero,
                   dense: true,
                 ),
               ),
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: 'export_all',
                 child: ListTile(
-                  leading: Icon(Icons.file_upload_rounded),
-                  title: Text('导出全部'),
+                  leading: const Icon(Icons.file_upload_rounded),
+                  title: Text(l10n.exportAll),
                   contentPadding: EdgeInsets.zero,
                   dense: true,
                 ),
               ),
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: 'export_category',
                 child: ListTile(
-                  leading: Icon(Icons.file_upload_rounded),
-                  title: Text('导出当前分类'),
+                  leading: const Icon(Icons.file_upload_rounded),
+                  title: Text(l10n.exportCurrentCategory),
                   contentPadding: EdgeInsets.zero,
                   dense: true,
                 ),
               ),
               const PopupMenuDivider(),
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: 'export_manager',
                 child: ListTile(
-                  leading: Icon(Icons.folder_open_rounded),
-                  title: Text('管理导出文件'),
+                  leading: const Icon(Icons.folder_open_rounded),
+                  title: Text(l10n.exportManagerTitle),
                   contentPadding: EdgeInsets.zero,
                   dense: true,
                 ),
               ),
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: 'settings',
                 child: ListTile(
-                  leading: Icon(Icons.settings_rounded),
-                  title: Text('设置'),
+                  leading: const Icon(Icons.settings_rounded),
+                  title: Text(l10n.settings),
                   contentPadding: EdgeInsets.zero,
                   dense: true,
                 ),
@@ -1238,11 +1268,12 @@ class _HomeScreenState extends State<HomeScreen>
 
   /// 通用分类选择对话框 - 复用于多个导入流程
   Future<String?> _showSelectCategoryDialog() async {
+    final l10n = AppLocalizations.of(context)!;
     final validCategories = [
-      '默认',
+      AppConstants.categoryDefault,
       ...SettingsService.instance.customCategories,
     ];
-    String selectedCategory = '默认';
+    String selectedCategory = AppConstants.categoryDefault;
     bool showNewCategoryInput = false;
     final newCategoryController = TextEditingController();
 
@@ -1252,7 +1283,7 @@ class _HomeScreenState extends State<HomeScreen>
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('选择导入分类'),
+          title: Text(l10n.selectImportCategory),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -1262,7 +1293,7 @@ class _HomeScreenState extends State<HomeScreen>
                   DropdownButtonFormField<String>(
                     value: selectedCategory,
                     decoration: InputDecoration(
-                      labelText: '选择分类',
+                      labelText: l10n.pickCategory,
                       prefixIcon: const Icon(Icons.folder_rounded),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -1271,7 +1302,7 @@ class _HomeScreenState extends State<HomeScreen>
                     items: validCategories.map((category) {
                       return DropdownMenuItem(
                         value: category,
-                        child: Text(category),
+                        child: Text(l10n.categoryLabelForStored(category)),
                       );
                     }).toList(),
                     onChanged: (value) {
@@ -1286,14 +1317,14 @@ class _HomeScreenState extends State<HomeScreen>
                       setDialogState(() => showNewCategoryInput = true);
                     },
                     icon: const Icon(Icons.add_rounded),
-                    label: const Text('新建分类'),
+                    label: Text(l10n.newCategory),
                   ),
                 ] else ...[
                   TextField(
                     controller: newCategoryController,
                     decoration: InputDecoration(
-                      labelText: '新分类名称',
-                      hintText: '输入新分类名称',
+                      labelText: l10n.newCategoryName,
+                      hintText: l10n.newCategoryHint,
                       prefixIcon: const Icon(Icons.create_new_folder_rounded),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -1311,7 +1342,7 @@ class _HomeScreenState extends State<HomeScreen>
                             );
                             newCategoryController.clear();
                           },
-                          child: const Text('取消'),
+                          child: Text(l10n.cancel),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -1324,7 +1355,7 @@ class _HomeScreenState extends State<HomeScreen>
                               Navigator.pop(context, newCategory);
                             }
                           },
-                          child: const Text('确定'),
+                          child: Text(l10n.confirm),
                         ),
                       ),
                     ],
@@ -1336,11 +1367,11 @@ class _HomeScreenState extends State<HomeScreen>
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('取消'),
+              child: Text(l10n.cancel),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(context, selectedCategory),
-              child: const Text('继续'),
+              child: Text(l10n.continueLabel),
             ),
           ],
         ),
@@ -1351,7 +1382,8 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _handleImport() async {
-    final fileInfo = await _importExportService.pickFileAndGetType();
+    final l10n = AppLocalizations.of(context)!;
+    final fileInfo = await _importExportService.pickFileAndGetType(l10n: l10n);
     if (fileInfo == null) {
       return;
     }
@@ -1376,8 +1408,9 @@ class _HomeScreenState extends State<HomeScreen>
     String fileContent,
     String fileType,
   ) async {
+    final l10n = AppLocalizations.of(context)!;
     final validCategories = [
-      '默认',
+      AppConstants.categoryDefault,
       ...SettingsService.instance.customCategories,
     ];
 
@@ -1386,7 +1419,7 @@ class _HomeScreenState extends State<HomeScreen>
     final selectedCategory = await _showSelectCategoryDialog();
     if (selectedCategory == null) return false;
 
-    if (selectedCategory != '默认' &&
+    if (selectedCategory != AppConstants.categoryDefault &&
         !validCategories.contains(selectedCategory)) {
       await SettingsService.instance.addCategory(selectedCategory);
     }
@@ -1394,6 +1427,7 @@ class _HomeScreenState extends State<HomeScreen>
     final result = await _importExportService.importFromContent(
       fileContent,
       overrideCategory: selectedCategory,
+      l10n: l10n,
     );
 
     if (mounted) {
@@ -1412,28 +1446,29 @@ class _HomeScreenState extends State<HomeScreen>
   Future<bool> _showCategoryImportOptionsDialog(String fileContent) async {
     if (!mounted) return false;
 
+    final l10n = AppLocalizations.of(context)!;
     final validCategories = [
-      '默认',
+      AppConstants.categoryDefault,
       ...SettingsService.instance.customCategories,
     ];
 
     final result = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('选择导入方式'),
-        content: const Text('如何导入此分类中的音效？'),
+        title: Text(l10n.chooseImportMethod),
+        content: Text(l10n.howImportCategory),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
+            child: Text(l10n.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, 'keep'),
-            child: const Text('保持原分类'),
+            child: Text(l10n.keepOriginalCategory),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, 'select'),
-            child: const Text('选择新分类'),
+            child: Text(l10n.pickNewCategory),
           ),
         ],
       ),
@@ -1445,6 +1480,7 @@ class _HomeScreenState extends State<HomeScreen>
       final importResult = await _importExportService.importFromContent(
         fileContent,
         overrideCategory: null,
+        l10n: l10n,
       );
       if (mounted) {
         _showSnackBar(
@@ -1461,7 +1497,7 @@ class _HomeScreenState extends State<HomeScreen>
     final selectedCategory = await _showSelectCategoryDialog();
     if (selectedCategory == null) return false;
 
-    if (selectedCategory != '默认' &&
+    if (selectedCategory != AppConstants.categoryDefault &&
         !validCategories.contains(selectedCategory)) {
       await SettingsService.instance.addCategory(selectedCategory);
     }
@@ -1469,6 +1505,7 @@ class _HomeScreenState extends State<HomeScreen>
     final importResult = await _importExportService.importFromContent(
       fileContent,
       overrideCategory: selectedCategory,
+      l10n: l10n,
     );
 
     if (mounted) {
@@ -1487,31 +1524,32 @@ class _HomeScreenState extends State<HomeScreen>
   Future<bool> _showFullBackupImportDialog(String fileContent) async {
     if (!mounted) return false;
 
+    final l10n = AppLocalizations.of(context)!;
     final result = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('导入完整备份'),
-        content: const Column(
+        title: Text(l10n.importFullBackupTitle),
+        content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('完整备份将导入所有音效和设置。'),
-            SizedBox(height: 12),
-            Text('请选择导入方式：'),
+            Text(l10n.importFullBackupBody),
+            const SizedBox(height: 12),
+            Text(l10n.importFullBackupChoose),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
+            child: Text(l10n.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, 'add'),
-            child: const Text('添加到现有数据'),
+            child: Text(l10n.mergeIntoExisting),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, 'replace'),
-            child: const Text('替换所有数据'),
+            child: Text(l10n.replaceAllData),
           ),
         ],
       ),
@@ -1524,16 +1562,16 @@ class _HomeScreenState extends State<HomeScreen>
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('确认替换'),
-          content: const Text('此操作将删除所有现有的音效和设置，并替换为备份数据。\n\n此操作无法撤销，请确认是否继续。'),
+          title: Text(l10n.confirmReplaceTitle),
+          content: Text(l10n.confirmReplaceBody),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('取消'),
+              child: Text(l10n.cancel),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('确认替换'),
+              child: Text(l10n.confirmReplace),
             ),
           ],
         ),
@@ -1545,17 +1583,17 @@ class _HomeScreenState extends State<HomeScreen>
       final finalConfirmed = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('最终确认'),
-          content: const Text('真的要替换所有数据吗？这是您最后的机会。'),
+          title: Text(l10n.finalConfirmTitle),
+          content: Text(l10n.finalConfirmBody),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('取消'),
+              child: Text(l10n.cancel),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(context, true),
               style: FilledButton.styleFrom(backgroundColor: Colors.red),
-              child: const Text('确认，替换所有数据'),
+              child: Text(l10n.confirmReplaceAll),
             ),
           ],
         ),
@@ -1566,6 +1604,7 @@ class _HomeScreenState extends State<HomeScreen>
       final importResult = await _importExportService.importFromContent(
         fileContent,
         clearFirst: true,
+        l10n: l10n,
       );
 
       if (mounted) {
@@ -1585,6 +1624,7 @@ class _HomeScreenState extends State<HomeScreen>
 
     final importResult = await _importExportService.importFromContent(
       fileContent,
+      l10n: l10n,
     );
 
     if (mounted) {
@@ -1605,6 +1645,7 @@ class _HomeScreenState extends State<HomeScreen>
   /// 显示全部导出名称对话框
   /// 通用导出名称输入对话框
   Future<String?> _showExportNameDialog({String defaultName = ''}) async {
+    final l10n = AppLocalizations.of(context)!;
     final nameController = TextEditingController(text: defaultName);
     
     if (!mounted) return null;
@@ -1612,19 +1653,19 @@ class _HomeScreenState extends State<HomeScreen>
     return showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('指定导出名称'),
+        title: Text(l10n.exportNameTitle),
         content: TextField(
           controller: nameController,
-          decoration: const InputDecoration(
-            hintText: '请输入导出文件名',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            hintText: l10n.exportNameHint,
+            border: const OutlineInputBorder(),
           ),
           autofocus: true,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
+            child: Text(l10n.cancel),
           ),
           FilledButton(
             onPressed: () {
@@ -1632,7 +1673,7 @@ class _HomeScreenState extends State<HomeScreen>
                 Navigator.pop(context, nameController.text);
               }
             },
-            child: const Text('确定'),
+            child: Text(l10n.confirm),
           ),
         ],
       ),
@@ -1640,40 +1681,56 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _showExportAllDialog() async {
-    final exportName = await _showExportNameDialog(defaultName: '梗音效备份');
+    final l10n = AppLocalizations.of(context)!;
+    final exportName =
+        await _showExportNameDialog(defaultName: l10n.defaultExportBackupName);
     if (exportName != null) {
       await _handleExportAll(customName: exportName);
     }
   }
 
   Future<void> _handleExportAll({String? customName}) async {
+    final l10n = AppLocalizations.of(context)!;
     if (_allSounds.isEmpty) {
-      _showSnackBar('没有音效可导出');
+      _showSnackBar(l10n.noSoundsToExport);
       return;
     }
 
     try {
-      final path = await _importExportService.exportAll(_allSounds, customName: customName);
+      final path = await _importExportService.exportAll(
+        _allSounds,
+        customName: customName,
+        l10n: l10n,
+      );
       if (mounted) {
-        _showSnackBar(path != null ? '导出成功（完整备份）' : '导出已取消');
+        _showSnackBar(
+          path != null ? l10n.exportSuccessFullBackup : l10n.exportCancelled,
+        );
       }
     } catch (e) {
       if (mounted) {
-        _showSnackBar('导出失败: $e', duration: const Duration(seconds: 3));
+        _showSnackBar(
+          l10n.exportFailedWith(e.toString()),
+          duration: const Duration(seconds: 3),
+        );
       }
     }
   }
 
   /// 显示分类导出名称对话框
   Future<void> _showExportCategoryDialog() async {
-    final exportName = await _showExportNameDialog(defaultName: _selectedCategory);
+    final l10n = AppLocalizations.of(context)!;
+    final exportName = await _showExportNameDialog(
+      defaultName: l10n.categoryLabelForStored(_selectedCategory),
+    );
     if (exportName != null) {
       await _handleExportCategory(customName: exportName);
     }
   }
 
   Future<void> _handleExportCategory({String? customName}) async {
-    if (_selectedCategory == '全部') {
+    final l10n = AppLocalizations.of(context)!;
+    if (_selectedCategory == AppConstants.categoryAll) {
       if (customName != null) {
         await _handleExportAll(customName: customName);
       } else {
@@ -1684,14 +1741,14 @@ class _HomeScreenState extends State<HomeScreen>
 
     final categorySounds = _allSounds
         .where(
-          (s) => _selectedCategory == '收藏'
+          (s) => _selectedCategory == AppConstants.categoryFavorites
               ? s.isFavorite
               : s.category == _selectedCategory,
         )
         .toList();
 
     if (categorySounds.isEmpty) {
-      _showSnackBar('当前分类没有音效');
+      _showSnackBar(l10n.currentCategoryEmpty);
       return;
     }
 
@@ -1700,13 +1757,19 @@ class _HomeScreenState extends State<HomeScreen>
         _selectedCategory,
         categorySounds,
         customName: customName,
+        l10n: l10n,
       );
       if (mounted) {
-        _showSnackBar(path != null ? '导出成功（分类）' : '导出已取消');
+        _showSnackBar(
+          path != null ? l10n.exportSuccessCategory : l10n.exportCancelled,
+        );
       }
     } catch (e) {
       if (mounted) {
-        _showSnackBar('导出失败: $e', duration: const Duration(seconds: 3));
+        _showSnackBar(
+          l10n.exportFailedWith(e.toString()),
+          duration: const Duration(seconds: 3),
+        );
       }
     }
   }
@@ -1715,6 +1778,7 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void> _showExportOptions(List<SoundItem> sounds) async {
     if (sounds.isEmpty) return;
 
+    final l10n = AppLocalizations.of(context)!;
     showModalBottomSheet(
       context: context,
       builder: (context) => SafeArea(
@@ -1725,8 +1789,8 @@ class _HomeScreenState extends State<HomeScreen>
             children: [
               ListTile(
                 leading: const Icon(Icons.archive_rounded),
-                title: const Text('导出为压缩包'),
-                subtitle: Text('将 ${sounds.length} 个音效打包导出'),
+                title: Text(l10n.pickExportZip),
+                subtitle: Text(l10n.pickExportZipSubtitle(sounds.length)),
                 onTap: () async {
                   Navigator.pop(context);
                   await _showMultiSelectExportNameDialog(sounds, asZip: true);
@@ -1734,8 +1798,8 @@ class _HomeScreenState extends State<HomeScreen>
               ),
               ListTile(
                 leading: const Icon(Icons.folder_rounded),
-                title: const Text('导出为单独文件'),
-                subtitle: Text('分别导出 ${sounds.length} 个音效'),
+                title: Text(l10n.pickExportSeparate),
+                subtitle: Text(l10n.pickExportSeparateSubtitle(sounds.length)),
                 onTap: () async {
                   Navigator.pop(context);
                   await _exportMultipleSounds(sounds, asZip: false);
@@ -1760,27 +1824,24 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void> _showImportSamplesDialog() async {
     if (!mounted) return;
 
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text('欢迎使用！'),
-        content: const Text(
-          '是否导入示例音效包？\n\n'
-          '我们精心准备了一套精选音效供您体验\n\n'
-          '稍后您也可以通过"导出文件管理"中找到示例音效包并导入',
-        ),
+        title: Text(l10n.onboardingTitle),
+        content: Text(l10n.onboardingSampleBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('跳过'),
+            child: Text(l10n.skip),
           ),
           FilledButton(
             onPressed: () async {
               Navigator.pop(context);
               await _importSamplePack();
             },
-            child: const Text('导入'),
+            child: Text(l10n.import),
           ),
         ],
       ),
@@ -1789,10 +1850,11 @@ class _HomeScreenState extends State<HomeScreen>
 
   /// 导入示例音效包（从预制的 .msb 文件导入）
   Future<void> _importSamplePack() async {
+    final l10n = AppLocalizations.of(context)!;
     try {
-      // 使用 ImportExportService 从 asset 导入示例音效包
       final result = await _importExportService.importFromAsset(
         AppConstants.samplePackAssetPath,
+        l10n: l10n,
       );
 
       await _initializeSounds();
@@ -1810,7 +1872,7 @@ class _HomeScreenState extends State<HomeScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('导入失败: $e'),
+            content: Text(l10n.importFailedWith(e.toString())),
             behavior: SnackBarBehavior.floating,
             backgroundColor: Colors.red,
           ),
@@ -1827,15 +1889,17 @@ class _HomeScreenState extends State<HomeScreen>
   }) async {
     if (sounds.isEmpty) return;
 
+    final l10n = AppLocalizations.of(context)!;
     try {
       if (asZip) {
-        // 导出为单个压缩包
         await _exportSoundsAsZip(sounds, customName: customName);
       } else {
-        // 分别导出每个音效
         List<String> successPaths = [];
         for (final sound in sounds) {
-          final path = await _importExportService.exportSound(sound);
+          final path = await _importExportService.exportSound(
+            sound,
+            l10n: l10n,
+          );
           if (path != null) {
             successPaths.add(path);
           }
@@ -1843,31 +1907,37 @@ class _HomeScreenState extends State<HomeScreen>
 
         if (mounted && successPaths.isNotEmpty) {
           _showSnackBar(
-            '导出成功（${successPaths.length}个音效）',
+            l10n.exportSuccessMultiple(successPaths.length),
             duration: const Duration(seconds: 2),
           );
         } else if (mounted) {
-          _showSnackBar('导出失败');
+          _showSnackBar(l10n.exportFailed);
         }
       }
     } catch (e) {
       if (mounted) {
-        _showSnackBar('导出失败: $e', duration: const Duration(seconds: 3));
+        _showSnackBar(
+          l10n.exportFailedWith(e.toString()),
+          duration: const Duration(seconds: 3),
+        );
       }
     }
   }
 
   /// 将多个音效导出为压缩包
   Future<void> _exportSoundsAsZip(List<SoundItem> sounds, {String? customName}) async {
+    final l10n = AppLocalizations.of(context)!;
     try {
-      // 创建一个包含所有音效的合并 .msb 文件
-      // 导出合并的 .msb 文件（包含所有音效）
-      await _importExportService.exportMultipleSounds(sounds, customName: customName);
+      await _importExportService.exportMultipleSounds(
+        sounds,
+        customName: customName,
+        l10n: l10n,
+      );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('导出成功（${sounds.length}个音效）'),
+            content: Text(l10n.exportSuccessMultiple(sounds.length)),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -1879,24 +1949,25 @@ class _HomeScreenState extends State<HomeScreen>
 
   /// 导出单个音效为 .msb 文件
   Future<void> _showExportSingleDialog(SoundItem sound) async {
+    final l10n = AppLocalizations.of(context)!;
     final nameController = TextEditingController(text: sound.name);
     
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('指定导出名称'),
+        title: Text(l10n.exportNameTitle),
         content: TextField(
           controller: nameController,
-          decoration: const InputDecoration(
-            hintText: '请输入导出文件名',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            hintText: l10n.exportNameHint,
+            border: const OutlineInputBorder(),
           ),
           autofocus: true,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
+            child: Text(l10n.cancel),
           ),
           FilledButton(
             onPressed: () async {
@@ -1905,7 +1976,7 @@ class _HomeScreenState extends State<HomeScreen>
                 await _exportSingleSound(sound, customName: nameController.text);
               }
             },
-            child: const Text('导出'),
+            child: Text(l10n.export),
           ),
         ],
       ),
@@ -1913,38 +1984,46 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _exportSingleSound(SoundItem sound, {String? customName}) async {
+    final l10n = AppLocalizations.of(context)!;
     try {
-      final path = await _importExportService.exportSound(sound, customName: customName);
+      final path = await _importExportService.exportSound(
+        sound,
+        customName: customName,
+        l10n: l10n,
+      );
       if (mounted) {
-        _showSnackBar(path != null ? '导出成功（单个音效）' : '导出取消');
+        _showSnackBar(
+          path != null ? l10n.exportSuccessSingle : l10n.exportSingleCancelled,
+        );
       }
     } catch (e) {
       if (mounted) {
-        _showSnackBar('导出失败: $e');
+        _showSnackBar(l10n.exportFailedWith(e.toString()));
       }
     }
   }
 
   /// 显示保存音频对话框
   Future<void> _showSaveAudioDialog(SoundItem sound) async {
+    final l10n = AppLocalizations.of(context)!;
     final nameController = TextEditingController(text: sound.name);
     
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('保存音频文件'),
+        title: Text(l10n.saveAudioFileTitle),
         content: TextField(
           controller: nameController,
-          decoration: const InputDecoration(
-            hintText: '请输入文件名',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            hintText: l10n.saveAudioFileHint,
+            border: const OutlineInputBorder(),
           ),
           autofocus: true,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
+            child: Text(l10n.cancel),
           ),
           FilledButton(
             onPressed: () async {
@@ -1953,7 +2032,7 @@ class _HomeScreenState extends State<HomeScreen>
                 await _saveAudioFile(sound, customName: nameController.text);
               }
             },
-            child: const Text('保存'),
+            child: Text(l10n.save),
           ),
         ],
       ),
@@ -1967,12 +2046,15 @@ class _HomeScreenState extends State<HomeScreen>
 
   /// 保存音频文件到用户选择的位置
   Future<void> _saveAudioFile(SoundItem sound, {String? customName}) async {
+    final l10n = AppLocalizations.of(context)!;
     try {
       final path = await _fileService.saveAudioToUserLocation(sound, customName: customName);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(path != null ? '音频保存成功' : '保存取消'),
+            content: Text(
+              path != null ? l10n.audioSaveSuccess : l10n.saveCancelledGeneric,
+            ),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -1981,7 +2063,7 @@ class _HomeScreenState extends State<HomeScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('保存失败: $e'),
+            content: Text(l10n.saveFailedWith(e.toString())),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -1992,12 +2074,15 @@ class _HomeScreenState extends State<HomeScreen>
   /// 保存封面图片到应用文件夹（自动保存）
   Future<void> _saveImageFile(SoundItem sound) async {
     if (sound.imagePath == null) return;
+    final l10n = AppLocalizations.of(context)!;
     try {
       final path = await _fileService.saveImageToUserLocation(sound);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(path != null ? '图片保存成功' : '保存取消'),
+            content: Text(
+              path != null ? l10n.imageSaveSuccess : l10n.saveCancelledGeneric,
+            ),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -2006,7 +2091,7 @@ class _HomeScreenState extends State<HomeScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('保存失败: $e'),
+            content: Text(l10n.saveFailedWith(e.toString())),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -2148,12 +2233,13 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildEmptyState() {
+    final l10n = AppLocalizations.of(context)!;
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            _selectedCategory == '收藏'
+            _selectedCategory == AppConstants.categoryFavorites
                 ? Icons.favorite_border_rounded
                 : Icons.music_off_rounded,
             size: 80,
@@ -2161,19 +2247,19 @@ class _HomeScreenState extends State<HomeScreen>
           ),
           const SizedBox(height: 16),
           Text(
-            _selectedCategory == '收藏'
-                ? '还没有收藏的音效'
+            _selectedCategory == AppConstants.categoryFavorites
+                ? l10n.emptyFavorites
                 : _searchQuery.isNotEmpty
-                ? '没有找到匹配的音效'
-                : '这个分类还没有音效',
+                ? l10n.emptySearch
+                : l10n.emptyCategory,
             style: TextStyle(fontSize: 16, color: Colors.grey.shade500),
           ),
           const SizedBox(height: 8),
-          if (_selectedCategory != '收藏')
+          if (_selectedCategory != AppConstants.categoryFavorites)
             TextButton.icon(
               onPressed: _addNewSound,
               icon: const Icon(Icons.add_rounded),
-              label: const Text('添加音效'),
+              label: Text(l10n.addSoundButton),
             ),
         ],
       ),
@@ -2182,6 +2268,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   /// 构建多选模式的底部操作栏
   Widget _buildSelectionBottomSheet(ThemeData theme) {
+    final l10n = AppLocalizations.of(context)!;
     final selectedCount = _selectedSoundIds.length;
     final selectedSounds = _filteredSounds
         .where((sound) => _selectedSoundIds.contains(sound.id))
@@ -2209,7 +2296,7 @@ class _HomeScreenState extends State<HomeScreen>
                 children: [
                   Flexible(
                     child: Text(
-                      '已选 $selectedCount',
+                      l10n.selectedCount(selectedCount),
                       style: const TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
@@ -2227,7 +2314,7 @@ class _HomeScreenState extends State<HomeScreen>
                         }
                       }),
                       child: Text(
-                        '全选',
+                        l10n.selectAll,
                         style: TextStyle(
                           fontSize: 12,
                           color: theme.primaryColor,
@@ -2245,7 +2332,7 @@ class _HomeScreenState extends State<HomeScreen>
                   ? null
                   : () => _showExportOptions(selectedSounds),
               icon: const Icon(Icons.download_rounded, size: 18),
-              label: const Text('导出'),
+              label: Text(l10n.export),
               style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
@@ -2260,7 +2347,7 @@ class _HomeScreenState extends State<HomeScreen>
                   ? null
                   : () => _showMoveToCategory(selectedSounds),
               icon: const Icon(Icons.folder_open_rounded, size: 18),
-              label: const Text('移动'),
+              label: Text(l10n.move),
               style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
@@ -2275,7 +2362,7 @@ class _HomeScreenState extends State<HomeScreen>
                   ? null
                   : () => _showDeleteConfirmation(selectedSounds),
               icon: const Icon(Icons.delete_outline_rounded, size: 18),
-              label: const Text('删除'),
+              label: Text(l10n.delete),
               style: FilledButton.styleFrom(
                 backgroundColor: Colors.red,
                 padding: const EdgeInsets.symmetric(
@@ -2292,16 +2379,16 @@ class _HomeScreenState extends State<HomeScreen>
 
   /// 显示移动到分类的对话框
   void _showMoveToCategory(List<SoundItem> sounds) {
+    final l10n = AppLocalizations.of(context)!;
     final scaffoldMessenger = ScaffoldMessenger.of(context);
     showDialog(
       context: context,
       builder: (dialogContext) {
-        // 在对话框内部获取分类，每次都是最新的
         List<String> validCategories = [
-          '默认',
+          AppConstants.categoryDefault,
           ...SettingsService.instance.customCategories,
         ];
-        String? currentSelected = validCategories.first; // 默认选中"默认"分类
+        String? currentSelected = validCategories.first;
         bool showNewCategoryInput = false;
         final newCategoryController = TextEditingController();
 
@@ -2309,18 +2396,17 @@ class _HomeScreenState extends State<HomeScreen>
           builder: (statefulContext, setDialogState) {
             // 在 setDialogState 后重新构建时，validCategories 会被重新初始化
             return AlertDialog(
-              title: const Text('移动到分类'),
+              title: Text(l10n.moveToCategoryTitle),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     if (!showNewCategoryInput) ...[
-                      // 分类选择
                       DropdownButtonFormField<String>(
                         value: currentSelected,
                         decoration: InputDecoration(
-                          labelText: '选择分类',
+                          labelText: l10n.pickCategory,
                           prefixIcon: const Icon(Icons.folder_rounded),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -2329,7 +2415,7 @@ class _HomeScreenState extends State<HomeScreen>
                         items: validCategories.map((category) {
                           return DropdownMenuItem(
                             value: category,
-                            child: Text(category),
+                            child: Text(l10n.categoryLabelForStored(category)),
                           );
                         }).toList(),
                         onChanged: (value) {
@@ -2345,15 +2431,14 @@ class _HomeScreenState extends State<HomeScreen>
                           setDialogState(() => showNewCategoryInput = true);
                         },
                         icon: const Icon(Icons.add_rounded),
-                        label: const Text('新建分类'),
+                        label: Text(l10n.newCategory),
                       ),
                     ] else ...[
-                      // 新建分类输入框
                       TextField(
                         controller: newCategoryController,
                         decoration: InputDecoration(
-                          labelText: '新分类名称',
-                          hintText: '输入新分类名称',
+                          labelText: l10n.newCategoryName,
+                          hintText: l10n.newCategoryHint,
                           prefixIcon: const Icon(
                             Icons.create_new_folder_rounded,
                           ),
@@ -2373,7 +2458,7 @@ class _HomeScreenState extends State<HomeScreen>
                                 );
                                 newCategoryController.clear();
                               },
-                              child: const Text('取消'),
+                              child: Text(l10n.cancel),
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -2383,14 +2468,12 @@ class _HomeScreenState extends State<HomeScreen>
                                 final newCategory = newCategoryController.text
                                     .trim();
                                 if (newCategory.isNotEmpty) {
-                                  // 添加新分类到 SettingsService
                                   await SettingsService.instance.addCategory(
                                     newCategory,
                                   );
-                                  // 更新下拉框列表和选中值
                                   setDialogState(() {
                                     validCategories = [
-                                      '默认',
+                                      AppConstants.categoryDefault,
                                       ...SettingsService
                                           .instance
                                           .customCategories,
@@ -2401,7 +2484,7 @@ class _HomeScreenState extends State<HomeScreen>
                                   });
                                 }
                               },
-                              child: const Text('确定'),
+                              child: Text(l10n.confirm),
                             ),
                           ),
                         ],
@@ -2413,7 +2496,7 @@ class _HomeScreenState extends State<HomeScreen>
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(statefulContext),
-                  child: const Text('取消'),
+                  child: Text(l10n.cancel),
                 ),
                 FilledButton(
                   onPressed: currentSelected == null || currentSelected!.isEmpty
@@ -2421,14 +2504,12 @@ class _HomeScreenState extends State<HomeScreen>
                       : () async {
                           final targetCategory = currentSelected!;
 
-                          // 如果是新建分类，添加到SettingsService
                           if (!validCategories.contains(targetCategory)) {
                             await SettingsService.instance.addCategory(
                               targetCategory,
                             );
                           }
 
-                          // 移动音效
                           for (final sound in sounds) {
                             final updated = sound.copyWith(
                               category: targetCategory,
@@ -2436,7 +2517,6 @@ class _HomeScreenState extends State<HomeScreen>
                             await _databaseService.updateSound(updated);
                           }
 
-                          // 立即更新本地列表并刷新 UI
                           setState(() {
                             for (final sound in sounds) {
                               final index = _allSounds.indexWhere((s) => s.id == sound.id);
@@ -2445,12 +2525,11 @@ class _HomeScreenState extends State<HomeScreen>
                               }
                             }
                             
-                            // 更新过滤后的列表
                             _filteredSounds = _allSounds.where((sound) {
                               bool categoryMatch = true;
-                              if (_selectedCategory == '收藏') {
+                              if (_selectedCategory == AppConstants.categoryFavorites) {
                                 categoryMatch = sound.isFavorite;
-                              } else if (_selectedCategory != '全部') {
+                              } else if (_selectedCategory != AppConstants.categoryAll) {
                                 categoryMatch = sound.category == _selectedCategory;
                               }
 
@@ -2474,13 +2553,16 @@ class _HomeScreenState extends State<HomeScreen>
                           scaffoldMessenger.showSnackBar(
                             SnackBar(
                               content: Text(
-                                '已将 ${sounds.length} 个音效移动到 $targetCategory',
+                                l10n.movedSoundsToCategory(
+                                  sounds.length,
+                                  l10n.categoryLabelForStored(targetCategory),
+                                ),
                               ),
                               behavior: SnackBarBehavior.floating,
                             ),
                           );
                         },
-                  child: const Text('确认'),
+                  child: Text(l10n.confirm),
                 ),
               ],
             );
@@ -2492,15 +2574,16 @@ class _HomeScreenState extends State<HomeScreen>
 
   /// 显示删除确认对话框
   void _showDeleteConfirmation(List<SoundItem> sounds) {
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('确认删除'),
-        content: Text('确定要删除 ${sounds.length} 个音效吗？此操作无法撤销。'),
+        title: Text(l10n.confirmDeleteSoundsTitle),
+        content: Text(l10n.confirmDeleteSoundsBody(sounds.length)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('取消'),
+            child: Text(l10n.cancel),
           ),
           TextButton(
             onPressed: () async {
@@ -2509,10 +2592,8 @@ class _HomeScreenState extends State<HomeScreen>
                 await _databaseService.deleteSound(sound.id);
               }
 
-              // 检查删除后是否还有音效
               final remainingSounds = await _databaseService.getAllSounds();
               if (remainingSounds.isEmpty) {
-                // 如果所有音效都被删除，重置默认音效导入标志
                 await SettingsService.instance.resetDefaultsImported();
               }
 
@@ -2522,11 +2603,11 @@ class _HomeScreenState extends State<HomeScreen>
               });
               await _initializeSounds();
               if (mounted) {
-                _showSnackBar('已删除 ${sounds.length} 个音效');
+                _showSnackBar(l10n.deletedSoundsCount(sounds.length));
               }
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('删除'),
+            child: Text(l10n.delete),
           ),
         ],
       ),
@@ -2537,13 +2618,17 @@ class _HomeScreenState extends State<HomeScreen>
     // 在多选模式下，将FAB向上调整，避免被底部操作栏遮挡
     final fabMarginBottom = _isSelectionMode && _selectedSoundIds.isNotEmpty ? 100.0 : 16.0;
     
+    final l10n = AppLocalizations.of(context)!;
     return Padding(
       padding: EdgeInsets.only(bottom: fabMarginBottom - 16.0),
       child: FloatingActionButton.extended(
         onPressed: _addNewSound,
         backgroundColor: theme.primaryColor,
         icon: const Icon(Icons.add_rounded),
-        label: const Text('添加', style: TextStyle(fontWeight: FontWeight.w600)),
+        label: Text(
+          l10n.fabAdd,
+          style: const TextStyle(fontWeight: FontWeight.w600),
+        ),
       ),
     );
   }

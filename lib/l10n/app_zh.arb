@@ -1,0 +1,501 @@
+{
+  "@@locale": "zh",
+  "appTitle": "梗音效",
+  "soundCount": "{count} 个音效",
+  "@soundCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "categoryAll": "全部",
+  "categoryFavorites": "收藏",
+  "categoryDefault": "默认",
+  "cancel": "取消",
+  "close": "关闭",
+  "save": "保存",
+  "done": "完成",
+  "delete": "删除",
+  "continueLabel": "继续",
+  "import": "导入",
+  "unknown": "未知",
+  "settings": "设置",
+  "sectionAppearance": "外观",
+  "themeMode": "主题模式",
+  "selectThemeMode": "选择主题模式",
+  "themeFollowSystem": "跟随系统",
+  "themeLight": "浅色模式",
+  "themeDark": "深色模式",
+  "gridColumns": "网格列数",
+  "selectGridColumns": "选择网格列数",
+  "columnsCount": "{n} 列",
+  "@columnsCount": {
+    "placeholders": {
+      "n": {"type": "int"}
+    }
+  },
+  "sectionAudio": "音频",
+  "hapticFeedback": "触觉反馈",
+  "hapticFeedbackDesc": "点击按钮时震动",
+  "allowMultiPlay": "同时播放",
+  "allowMultiPlayDesc": "开启后点击新音效不会中断正在播放的音效",
+  "sectionSounds": "音效",
+  "importSamplePack": "导入示例音效包",
+  "importSamplePackDesc": "导入精选示例音效",
+  "startupCategory": "启动时显示的分类",
+  "sectionDataExport": "数据导出",
+  "manageExportFiles": "管理导出文件",
+  "manageExportFilesDesc": "查看、分享、导入导出的文件",
+  "sectionCategoryMgmt": "分类管理",
+  "customCategories": "自定义分类",
+  "customCategoriesEmpty": "暂无自定义分类",
+  "customCategoriesCount": "{n} 个自定义分类",
+  "@customCategoriesCount": {
+    "placeholders": {
+      "n": {"type": "int"}
+    }
+  },
+  "categoryOrder": "分类显示顺序",
+  "categoryOrderDesc": "调整主页分类的显示顺序",
+  "about": "关于",
+  "version": "版本",
+  "versionNumber": "1.0.0",
+  "sectionLanguage": "语言",
+  "language": "界面语言",
+  "languageSystem": "跟随系统",
+  "languageZh": "简体中文",
+  "languageEn": "English",
+  "selectLanguage": "选择界面语言",
+  "selectImportCategory": "选择导入分类",
+  "pickCategory": "选择分类",
+  "newCategory": "新建分类",
+  "newCategoryName": "新分类名称",
+  "newCategoryHint": "输入新分类名称",
+  "manageCategories": "管理分类",
+  "deleteCategoryTitle": "删除分类",
+  "deleteCategoryConfirm": "确定要删除分类 \"{name}\" 吗？",
+  "@deleteCategoryConfirm": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "deleteCategoryHasSounds": "该分类下有 {count} 个音效",
+  "@deleteCategoryHasSounds": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "deleteCategoryChooseAction": "请选择处理方式：",
+  "deleteCategoryNoSounds": "该分类下没有音效，删除后无法恢复。",
+  "moveToDefaultCategory": "移到默认分类",
+  "deleteCategoryAndSounds": "删除分类和音效",
+  "movedToDefaultSnack": "已将 {count} 个音效移至「默认」分类",
+  "@movedToDefaultSnack": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "deletedCategoryAndSoundsSnack": "已删除分类及其下的 {count} 个音效",
+  "@deletedCategoryAndSoundsSnack": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "importSampleTitle": "导入示例音效包",
+  "importSampleBody": "是否导入示例音效包？\n\n这是一套精心准备的精选音效，帮助您快速体验应用功能。\n\n您也可以在「导出文件管理」中找到此音效包并随时导入。",
+  "importFailedWith": "导入失败: {error}",
+  "@importFailedWith": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "reorderCategoriesTitle": "调整分类顺序",
+  "reorderCategoriesHint": "长按拖动以调整顺序",
+  "categoryOrderSaved": "分类顺序已保存",
+  "stopAllSounds": "停止所有音效",
+  "exitMultiSelect": "退出多选",
+  "multiSelect": "多选",
+  "importSounds": "导入音效",
+  "exportAll": "导出全部",
+  "exportCurrentCategory": "导出当前分类",
+  "soundAddedSuccess": "音效添加成功！",
+  "soundDeleted": "已删除",
+  "pressAgainToExit": "再按一次返回键退出应用",
+  "searchHint": "搜索音效…",
+  "noSoundsToExport": "没有音效可导出",
+  "exportSuccessFullBackup": "导出成功（完整备份）",
+  "exportCancelled": "导出已取消",
+  "exportFailedWith": "导出失败: {error}",
+  "@exportFailedWith": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "currentCategoryEmpty": "当前分类没有音效",
+  "exportSuccessCategory": "导出成功（分类）",
+  "exportSuccessMultiple": "导出成功（{count} 个音效）",
+  "@exportSuccessMultiple": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "exportFailed": "导出失败",
+  "exportSuccessSingle": "导出成功（单个音效）",
+  "exportSingleCancelled": "导出取消",
+  "deletedSoundsCount": "已删除 {count} 个音效",
+  "@deletedSoundsCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "importPreviewTitle": "导入预览",
+  "fileDetailsTitle": "文件详情",
+  "labelFileName": "文件名",
+  "labelType": "类型",
+  "labelSize": "大小",
+  "labelFileTime": "文件时间",
+  "labelExportTime": "导出时间",
+  "labelCategory": "分类",
+  "soundsContained": "包含的音效 ({count} 个):",
+  "@soundsContained": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "soundsToImport": "将导入的音效 ({count} 个):",
+  "@soundsToImport": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "typeSoundSingle": "单个音效",
+  "typeSoundCategory": "分类",
+  "typeSoundMultiple": "多个音效",
+  "typeSoundFull": "完整备份",
+  "typeUnknown": "未知",
+  "exportManagerTitle": "管理导出文件",
+  "refresh": "刷新",
+  "exportDirEmpty": "暂无导出文件",
+  "exportDirEmptyHint": "在主页导出音效后，文件将显示在这里",
+  "fileOptions": "文件选项",
+  "fileDetails": "文件详情",
+  "fileDetailsSubtitle": "查看包类型与音效列表",
+  "importThisFile": "导入",
+  "importThisFileSubtitle": "将此文件导入到应用",
+  "share": "分享",
+  "shareSubtitle": "分享到微信、QQ 等",
+  "deleteFile": "删除",
+  "deleteFileSubtitle": "删除此导出文件",
+  "samplePackNoDeleteSubtitle": "示例音效包不可删除",
+  "shareSoundFile": "分享音效文件: {name}",
+  "@shareSoundFile": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "cannotDeleteSamplePack": "无法删除示例音效包",
+  "samplePackNoDelete": "示例音效包不可删除",
+  "confirmDelete": "确认删除",
+  "confirmDeleteFile": "确定要删除 \"{name}\" 吗？",
+  "@confirmDeleteFile": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "deletedOk": "已删除",
+  "deleteFailedWith": "删除失败: {error}",
+  "@deleteFailedWith": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "readFileFailed": "读取文件失败: {error}",
+  "@readFileFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "unknownFileType": "未知的文件类型",
+  "importReadError": "读取文件失败: {error}",
+  "@importReadError": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "fileDetailsReadError": "无法读取文件详情: {error}",
+  "@fileDetailsReadError": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "importFailed": "导入失败: {error}",
+  "@importFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "builtInSampleNoDelete": "内置示例 · 不可删除",
+  "chooseImportMethod": "选择导入方式",
+  "howImportCategory": "如何导入此分类中的音效？",
+  "keepOriginalCategory": "保持原分类",
+  "pickNewCategory": "选择新分类",
+  "importFullBackupTitle": "导入完整备份",
+  "importFullBackupBody": "完整备份将导入所有音效和设置。",
+  "importFullBackupChoose": "请选择导入方式：",
+  "mergeIntoExisting": "添加到现有数据",
+  "replaceAllData": "替换所有数据",
+  "confirmReplaceTitle": "确认替换",
+  "confirmReplaceBody": "此操作将删除所有现有的音效和设置，并替换为备份数据。\n\n此操作无法撤销，请确认是否继续。",
+  "confirmReplace": "确认替换",
+  "finalConfirmTitle": "最终确认",
+  "finalConfirmBody": "真的要替换所有数据吗？这是您最后的机会。",
+  "confirmReplaceAll": "确认，替换所有数据",
+  "exportNameTitle": "指定导出名称",
+  "exportNameHint": "请输入导出文件名",
+  "confirm": "确定",
+  "pickExportZip": "导出为压缩包",
+  "pickExportZipSubtitle": "将 {count} 个音效打包导出",
+  "@pickExportZipSubtitle": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "pickExportSeparate": "导出为单独文件",
+  "pickExportSeparateSubtitle": "分别导出 {count} 个音效",
+  "@pickExportSeparateSubtitle": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "export": "导出",
+  "notValidPackFile": "不是有效的音效包文件",
+  "invalidImportFormat": "无效的导入文件格式",
+  "importErrorGeneric": "导入失败: {error}",
+  "@importErrorGeneric": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "importNoFile": "未选择文件",
+  "importFileMissing": "文件不存在",
+  "importSampleFailed": "导入示例音效包失败: {error}",
+  "@importSampleFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "importParseFailed": "解析失败: {error}",
+  "@importParseFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "importUnknownType": "未知的导入类型: {type}",
+  "@importUnknownType": {
+    "placeholders": {
+      "type": {"type": "String"}
+    }
+  },
+  "importJsonFailed": "JSON解析失败: {error}",
+  "@importJsonFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "importSoundFailedWith": "导入音效失败: {detail}",
+  "@importSoundFailedWith": {
+    "placeholders": {
+      "detail": {"type": "String"}
+    }
+  },
+  "cannotParseSoundData": "无法解析文件数据",
+  "importSoundSuccessNamed": "成功导入音效: {name}",
+  "@importSoundSuccessNamed": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "importCategoryFailedWith": "导入分类失败: {error}",
+  "@importCategoryFailedWith": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "importBackupFailedWith": "导入备份失败: {error}",
+  "@importBackupFailedWith": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "successImportCategoryCount": "成功导入分类「{category}」中的 {count} 个音效",
+  "@successImportCategoryCount": {
+    "placeholders": {
+      "category": {"type": "String"},
+      "count": {"type": "int"}
+    }
+  },
+  "successImportCount": "成功导入 {count} 个音效",
+  "@successImportCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "importFailuresLine": "\n失败 {failed} 个: {detail}",
+  "@importFailuresLine": {
+    "placeholders": {
+      "failed": {"type": "int"},
+      "detail": {"type": "String"}
+    }
+  },
+  "unknownError": "未知错误",
+  "audioTrimFailed": "音频截取失败:\n{msg}",
+  "@audioTrimFailed": {
+    "placeholders": {
+      "msg": {"type": "String"}
+    }
+  },
+  "addSoundTitle": "添加音效",
+  "editSoundTitle": "编辑音效",
+  "audioSource": "音频来源",
+  "sourceFile": "文件",
+  "sourceUrl": "链接",
+  "audioUrlHint": "输入音频链接 (http:// 或 https://)",
+  "pickAudioFile": "选择音频文件 *",
+  "pickedAudio": "已选择: {name}",
+  "@pickedAudio": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "clearLink": "清空链接",
+  "loading": "加载中...",
+  "preview": "预览",
+  "stopPlayback": "停止播放",
+  "coverImage": "封面图片",
+  "imageUrlHint": "输入图片链接 (可选)",
+  "pickCoverOptional": "选择封面图片 (可选)",
+  "coverSelected": "已选择封面图片",
+  "removeCover": "删除封面图片",
+  "soundName": "音效名称",
+  "soundNameHint": "输入音效名称",
+  "categoryLabel": "分类",
+  "soundSettings": "音效设置",
+  "previewAudioFirst": "请先预览音频",
+  "addSoundButton": "添加音效",
+  "saveChanges": "保存更改",
+  "pickAudioFirst": "请先选择音频文件或输入链接",
+  "needSoundName": "请输入音效名称",
+  "urlMustHttp": "音频链接必须以 http:// 或 https:// 开头",
+  "fileNotExist": "音频文件不存在或已被删除",
+  "playbackFailed": "播放失败: {error}",
+  "@playbackFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "trimSectionTitle": "截取片段",
+  "trimCannotReadDuration": "无法读取时长，将保存完整音频。",
+  "trimPreviewFailed": "片段预览失败: {error}",
+  "@trimPreviewFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "trimPreviewPlay": "试听片段",
+  "trimPreviewStop": "停止片段",
+  "trimHint": "添加时将仅保留所选区间（导出为 M4A）。Windows / Linux 需已安装 ffmpeg。",
+  "needDownloadFirst": "请先预览以下载音频",
+  "clipboardCopied": "已复制到剪切板",
+  "onboardingTitle": "欢迎使用！",
+  "onboardingSampleBody": "是否导入示例音效包？\n\n我们精心准备了一套精选音效供您体验\n\n稍后您也可以通过「导出文件管理」中找到示例音效包并导入",
+  "skip": "跳过",
+  "toastFavoriteAdded": "已添加到收藏",
+  "toastFavoriteRemoved": "已取消收藏",
+  "detailName": "名称",
+  "detailCategory": "分类",
+  "detailFavorite": "收藏",
+  "favoriteYes": "是",
+  "favoriteNo": "否",
+  "detailSourceType": "来源类型",
+  "sourceTypeBuiltin": "内置资源",
+  "sourceTypeLocalFile": "本地文件",
+  "sourceTypeNetwork": "网络链接",
+  "detailSoundPath": "音频路径",
+  "detailImagePath": "图片路径",
+  "moveToCategoryTitle": "移动到分类",
+  "confirmDeleteSoundsTitle": "确认删除",
+  "confirmDeleteSoundsBody": "确定要删除 {count} 个音效吗？此操作无法撤销。",
+  "@confirmDeleteSoundsBody": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "confirmDeleteSingleSoundBody": "确定要删除「{name}」吗？此操作不可恢复。",
+  "@confirmDeleteSingleSoundBody": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "selectedCount": "已选 {count}",
+  "@selectedCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "selectAll": "全选",
+  "move": "移动",
+  "fabAdd": "添加",
+  "emptyFavorites": "还没有收藏的音效",
+  "emptySearch": "没有找到匹配的音效",
+  "emptyCategory": "这个分类还没有音效",
+  "movedSoundsToCategory": "已将 {count} 个音效移动到 {category}",
+  "@movedSoundsToCategory": {
+    "placeholders": {
+      "count": {"type": "int"},
+      "category": {"type": "String"}
+    }
+  },
+  "saveAudioFileTitle": "保存音频文件",
+  "saveAudioFileHint": "请输入文件名",
+  "audioSaveSuccess": "音频保存成功",
+  "imageSaveSuccess": "图片保存成功",
+  "saveCancelledGeneric": "保存取消",
+  "saveFailedWith": "保存失败: {error}",
+  "@saveFailedWith": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "shareFailedWith": "分享失败: {error}",
+  "@shareFailedWith": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "exportDirUnavailable": "无法获取导出目录",
+  "dialogSaveExportLocation": "选择导出位置",
+  "dialogPickImportFile": "选择导入文件",
+  "soundTileCount": "{count} 个音效",
+  "@soundTileCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "unfavorite": "取消收藏",
+  "favoriteAdd": "添加到收藏",
+  "exportAsMsb": "导出为 .msb 文件",
+  "saveAudioFileAction": "保存音频文件",
+  "saveCoverImageAction": "保存封面图片",
+  "viewDetails": "查看详情",
+  "edit": "编辑",
+  "previewName": "预览",
+  "downloadAudioFailed": "下载音频失败:\n{msg}",
+  "@downloadAudioFailed": {
+    "placeholders": {
+      "msg": {"type": "String"}
+    }
+  },
+  "exceptionPickAudioFirst": "请先选择音频文件或输入链接",
+  "exportCancelledException": "导出取消",
+  "defaultExportBackupName": "梗音效备份",
+  "defaultExportMultiName": "音效合集"
+}

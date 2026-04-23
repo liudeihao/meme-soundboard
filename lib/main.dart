@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:io';
 import 'package:window_manager/window_manager.dart';
+import 'l10n/app_localizations.dart';
 import 'screens/home_screen.dart';
 import 'services/settings_service.dart';
 
@@ -66,8 +67,11 @@ class _MemeSoundboardAppState extends State<MemeSoundboardApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: '梗音效',
+      onGenerateTitle: (context) => AppLocalizations.of(context)!.appTitle,
       debugShowCheckedModeBanner: false,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      locale: SettingsService.instance.localeOverride,
 
       // 亮色主题
       theme: ThemeData(

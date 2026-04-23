@@ -1,20 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../l10n/app_localizations.dart';
+import '../utils/category_l10n.dart';
 
 /// Shared "import preview" for .msb packs (home import, external open, export manager).
 class MsbImportPreviewDialog {
-  static String typeLabel(String type) {
+  static String typeLabel(AppLocalizations l10n, String type) {
     switch (type) {
       case 'sound':
-        return '单个音效';
+        return l10n.typeSoundSingle;
       case 'category':
-        return '分类';
+        return l10n.typeSoundCategory;
       case 'multiple':
-        return '多个音效';
+        return l10n.typeSoundMultiple;
       case 'full':
-        return '完整备份';
+        return l10n.typeSoundFull;
       default:
-        return '未知';
+        return l10n.typeUnknown;
     }
   }
 
@@ -54,6 +56,7 @@ class MsbImportPreviewDialog {
 
   static ({String type, List<String> soundNames, String? categoryName}) _parseSounds(
     Map<String, dynamic> json,
+    AppLocalizations l10n,
   ) {
     final type = json['type'] as String? ?? 'unknown';
     final soundNames = <String>[];
@@ -62,7 +65,7 @@ class MsbImportPreviewDialog {
     if (type == 'sound') {
       final data = json['data'] as Map<String, dynamic>?;
       if (data != null) {
-        soundNames.add(data['name'] as String? ?? '未知');
+        soundNames.add(data['name'] as String? ?? l10n.unknown);
       }
     } else if (type == 'category') {
       categoryName = json['category'] as String?;
@@ -70,7 +73,7 @@ class MsbImportPreviewDialog {
       if (data != null) {
         for (final item in data) {
           if (item is Map<String, dynamic>) {
-            soundNames.add(item['name'] as String? ?? '未知');
+            soundNames.add(item['name'] as String? ?? l10n.unknown);
           }
         }
       }
@@ -79,7 +82,7 @@ class MsbImportPreviewDialog {
       if (sounds != null) {
         for (final item in sounds) {
           if (item is Map<String, dynamic>) {
-            soundNames.add(item['name'] as String? ?? '未知');
+            soundNames.add(item['name'] as String? ?? l10n.unknown);
           }
         }
       }
@@ -88,16 +91,16 @@ class MsbImportPreviewDialog {
     return (type: type, soundNames: soundNames, categoryName: categoryName);
   }
 
-  /// Shared body: metadata + scrollable sound name list (import preview & export file details).
   static Widget buildPackPreviewBody(
     BuildContext context, {
+    required AppLocalizations l10n,
     required String displayName,
     required Map<String, dynamic> json,
     int? sizeBytes,
     DateTime? modifiedTime,
     required String soundSectionTitle,
   }) {
-    final parsed = _parseSounds(json);
+    final parsed = _parseSounds(json, l10n);
     final type = parsed.type;
     final soundNames = parsed.soundNames;
     final categoryName = parsed.categoryName;
@@ -107,20 +110,24 @@ class MsbImportPreviewDialog {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        _previewRow('文件名', displayName),
-        _previewRow('类型', typeLabel(type)),
-        _previewRow('大小', sizeLabel(sizeBytes)),
+        _previewRow(l10n.labelFileName, displayName),
+        _previewRow(l10n.labelType, typeLabel(l10n, type)),
+        _previewRow(l10n.labelSize, sizeLabel(sizeBytes)),
         if (modifiedTime != null)
           _previewRow(
-            '文件时间',
+            l10n.labelFileTime,
             DateFormat('yyyy-MM-dd HH:mm').format(modifiedTime),
           ),
         if (exportDate != null)
           _previewRow(
-            '导出时间',
+            l10n.labelExportTime,
             DateFormat('yyyy-MM-dd HH:mm').format(exportDate),
           ),
-        if (categoryName != null) _previewRow('分类', categoryName),
+        if (categoryName != null)
+          _previewRow(
+            l10n.labelCategory,
+            l10n.categoryLabelForStored(categoryName),
+          ),
         const SizedBox(height: 12),
         Text(
           soundSectionTitle,
@@ -152,7 +159,6 @@ class MsbImportPreviewDialog {
     );
   }
 
-  /// Read-only pack details (e.g. export manager).
   static Future<void> showPackDetails(
     BuildContext context, {
     required String displayName,
@@ -160,7 +166,8 @@ class MsbImportPreviewDialog {
     int? sizeBytes,
     DateTime? modifiedTime,
   }) async {
-    final parsed = _parseSounds(json);
+    final l10n = AppLocalizations.of(context)!;
+    final parsed = _parseSounds(json, l10n);
     final n = parsed.soundNames.length;
     await showDialog<void>(
       context: context,
@@ -172,40 +179,42 @@ class MsbImportPreviewDialog {
               color: Theme.of(context).primaryColor,
             ),
             const SizedBox(width: 8),
-            const Text('文件详情'),
+            Text(l10n.fileDetailsTitle),
           ],
         ),
         content: SingleChildScrollView(
           child: buildPackPreviewBody(
             context,
+            l10n: l10n,
             displayName: displayName,
             json: json,
             sizeBytes: sizeBytes,
             modifiedTime: modifiedTime,
-            soundSectionTitle: '包含的音效 ($n 个):',
+            soundSectionTitle: l10n.soundsContained(n),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('关闭'),
+            child: Text(l10n.close),
           ),
         ],
       ),
     );
   }
 
-  /// Returns true if the user taps the confirm button.
   static Future<bool> show(
     BuildContext context, {
     required String displayName,
     required Map<String, dynamic> json,
     int? sizeBytes,
     DateTime? modifiedTime,
-    String confirmLabel = '继续',
+    String? confirmLabel,
   }) async {
-    final parsed = _parseSounds(json);
+    final l10n = AppLocalizations.of(context)!;
+    final parsed = _parseSounds(json, l10n);
     final n = parsed.soundNames.length;
+    final label = confirmLabel ?? l10n.continueLabel;
 
     final result = await showDialog<bool>(
       context: context,
@@ -214,27 +223,28 @@ class MsbImportPreviewDialog {
           children: [
             Icon(typeIcon(parsed.type), color: Theme.of(context).primaryColor),
             const SizedBox(width: 8),
-            const Text('导入预览'),
+            Text(l10n.importPreviewTitle),
           ],
         ),
         content: SingleChildScrollView(
           child: buildPackPreviewBody(
             context,
+            l10n: l10n,
             displayName: displayName,
             json: json,
             sizeBytes: sizeBytes,
             modifiedTime: modifiedTime,
-            soundSectionTitle: '将导入的音效 ($n 个):',
+            soundSectionTitle: l10n.soundsToImport(n),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
+            child: Text(l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: Text(confirmLabel),
+            child: Text(label),
           ),
         ],
       ),

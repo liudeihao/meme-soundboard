@@ -1,0 +1,501 @@
+{
+  "@@locale": "en",
+  "appTitle": "Meme Soundboard",
+  "soundCount": "{count} sounds",
+  "@soundCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "categoryAll": "All",
+  "categoryFavorites": "Favorites",
+  "categoryDefault": "Default",
+  "cancel": "Cancel",
+  "close": "Close",
+  "save": "Save",
+  "done": "Done",
+  "delete": "Delete",
+  "continueLabel": "Continue",
+  "import": "Import",
+  "unknown": "Unknown",
+  "settings": "Settings",
+  "sectionAppearance": "Appearance",
+  "themeMode": "Theme",
+  "selectThemeMode": "Choose theme",
+  "themeFollowSystem": "Use system setting",
+  "themeLight": "Light",
+  "themeDark": "Dark",
+  "gridColumns": "Grid columns",
+  "selectGridColumns": "Choose column count",
+  "columnsCount": "{n} columns",
+  "@columnsCount": {
+    "placeholders": {
+      "n": {"type": "int"}
+    }
+  },
+  "sectionAudio": "Audio",
+  "hapticFeedback": "Haptic feedback",
+  "hapticFeedbackDesc": "Vibrate when tapping buttons",
+  "allowMultiPlay": "Allow overlap",
+  "allowMultiPlayDesc": "New taps won’t stop sounds already playing",
+  "sectionSounds": "Sounds",
+  "importSamplePack": "Import sample pack",
+  "importSamplePackDesc": "Import curated sample sounds",
+  "startupCategory": "Category on startup",
+  "sectionDataExport": "Data & export",
+  "manageExportFiles": "Manage export files",
+  "manageExportFilesDesc": "View, share, and import exported packs",
+  "sectionCategoryMgmt": "Categories",
+  "customCategories": "Custom categories",
+  "customCategoriesEmpty": "No custom categories yet",
+  "customCategoriesCount": "{n} custom categories",
+  "@customCategoriesCount": {
+    "placeholders": {
+      "n": {"type": "int"}
+    }
+  },
+  "categoryOrder": "Category order",
+  "categoryOrderDesc": "Reorder categories on the home screen",
+  "about": "About",
+  "version": "Version",
+  "versionNumber": "1.0.0",
+  "sectionLanguage": "Language",
+  "language": "App language",
+  "languageSystem": "Use system setting",
+  "languageZh": "简体中文",
+  "languageEn": "English",
+  "selectLanguage": "Choose app language",
+  "selectImportCategory": "Choose import category",
+  "pickCategory": "Category",
+  "newCategory": "New category",
+  "newCategoryName": "New category name",
+  "newCategoryHint": "Enter a category name",
+  "manageCategories": "Manage categories",
+  "deleteCategoryTitle": "Delete category",
+  "deleteCategoryConfirm": "Delete category \"{name}\"?",
+  "@deleteCategoryConfirm": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "deleteCategoryHasSounds": "This category has {count} sounds",
+  "@deleteCategoryHasSounds": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "deleteCategoryChooseAction": "Choose what to do:",
+  "deleteCategoryNoSounds": "No sounds in this category. This cannot be undone.",
+  "moveToDefaultCategory": "Move to Default",
+  "deleteCategoryAndSounds": "Delete category & sounds",
+  "movedToDefaultSnack": "Moved {count} sounds to \"Default\"",
+  "@movedToDefaultSnack": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "deletedCategoryAndSoundsSnack": "Deleted category and {count} sounds",
+  "@deletedCategoryAndSoundsSnack": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "importSampleTitle": "Import sample pack",
+  "importSampleBody": "Import the sample sound pack?\n\nIt’s a curated set to help you try the app.\n\nYou can also import it anytime from Export file manager.",
+  "importFailedWith": "Import failed: {error}",
+  "@importFailedWith": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "reorderCategoriesTitle": "Reorder categories",
+  "reorderCategoriesHint": "Long-press and drag to reorder",
+  "categoryOrderSaved": "Category order saved",
+  "stopAllSounds": "Stop all sounds",
+  "exitMultiSelect": "Exit selection",
+  "multiSelect": "Select",
+  "importSounds": "Import sounds",
+  "exportAll": "Export all",
+  "exportCurrentCategory": "Export this category",
+  "soundAddedSuccess": "Sound added.",
+  "soundDeleted": "Deleted",
+  "pressAgainToExit": "Press back again to exit",
+  "searchHint": "Search sounds…",
+  "noSoundsToExport": "Nothing to export",
+  "exportSuccessFullBackup": "Exported (full backup)",
+  "exportCancelled": "Export cancelled",
+  "exportFailedWith": "Export failed: {error}",
+  "@exportFailedWith": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "currentCategoryEmpty": "No sounds in this category",
+  "exportSuccessCategory": "Exported (category)",
+  "exportSuccessMultiple": "Exported {count} sounds",
+  "@exportSuccessMultiple": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "exportFailed": "Export failed",
+  "exportSuccessSingle": "Exported (single sound)",
+  "exportSingleCancelled": "Export cancelled",
+  "deletedSoundsCount": "Deleted {count} sounds",
+  "@deletedSoundsCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "importPreviewTitle": "Import preview",
+  "fileDetailsTitle": "File details",
+  "labelFileName": "File name",
+  "labelType": "Type",
+  "labelSize": "Size",
+  "labelFileTime": "File time",
+  "labelExportTime": "Exported at",
+  "labelCategory": "Category",
+  "soundsContained": "Sounds in pack ({count}):",
+  "@soundsContained": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "soundsToImport": "Sounds to import ({count}):",
+  "@soundsToImport": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "typeSoundSingle": "Single sound",
+  "typeSoundCategory": "Category pack",
+  "typeSoundMultiple": "Multiple sounds",
+  "typeSoundFull": "Full backup",
+  "typeUnknown": "Unknown",
+  "exportManagerTitle": "Export files",
+  "refresh": "Refresh",
+  "exportDirEmpty": "No export files yet",
+  "exportDirEmptyHint": "Export from the home screen to see files here",
+  "fileOptions": "File options",
+  "fileDetails": "Details",
+  "fileDetailsSubtitle": "Type and sound list",
+  "importThisFile": "Import",
+  "importThisFileSubtitle": "Import into the app",
+  "share": "Share",
+  "shareSubtitle": "Share via other apps",
+  "deleteFile": "Delete",
+  "deleteFileSubtitle": "Remove this file",
+  "samplePackNoDeleteSubtitle": "Sample pack can’t be deleted",
+  "shareSoundFile": "Share: {name}",
+  "@shareSoundFile": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "cannotDeleteSamplePack": "The sample pack can’t be deleted",
+  "samplePackNoDelete": "Sample pack can’t be deleted",
+  "confirmDelete": "Delete?",
+  "confirmDeleteFile": "Delete \"{name}\"?",
+  "@confirmDeleteFile": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "deletedOk": "Deleted",
+  "deleteFailedWith": "Delete failed: {error}",
+  "@deleteFailedWith": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "readFileFailed": "Couldn’t read file: {error}",
+  "@readFileFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "unknownFileType": "Unknown file type",
+  "importReadError": "Couldn’t read file: {error}",
+  "@importReadError": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "fileDetailsReadError": "Couldn’t read details: {error}",
+  "@fileDetailsReadError": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "importFailed": "Import failed: {error}",
+  "@importFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "builtInSampleNoDelete": "Built-in sample · can’t delete",
+  "chooseImportMethod": "Import method",
+  "howImportCategory": "How should this category pack be imported?",
+  "keepOriginalCategory": "Keep categories",
+  "pickNewCategory": "Pick new category",
+  "importFullBackupTitle": "Import full backup",
+  "importFullBackupBody": "Imports all sounds and settings.",
+  "importFullBackupChoose": "Choose how to import:",
+  "mergeIntoExisting": "Merge into current data",
+  "replaceAllData": "Replace everything",
+  "confirmReplaceTitle": "Replace all data?",
+  "confirmReplaceBody": "This removes all current sounds and settings and replaces them with the backup.\n\nThis can’t be undone.",
+  "confirmReplace": "Replace",
+  "finalConfirmTitle": "Last chance",
+  "finalConfirmBody": "Really replace all data?",
+  "confirmReplaceAll": "Yes, replace all",
+  "exportNameTitle": "Export name",
+  "exportNameHint": "File name",
+  "confirm": "OK",
+  "pickExportZip": "Export as one pack",
+  "pickExportZipSubtitle": "Pack {count} sounds",
+  "@pickExportZipSubtitle": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "pickExportSeparate": "Export separately",
+  "pickExportSeparateSubtitle": "Export {count} files",
+  "@pickExportSeparateSubtitle": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "export": "Export",
+  "notValidPackFile": "Not a valid sound pack file",
+  "invalidImportFormat": "Invalid pack format",
+  "importErrorGeneric": "Import failed: {error}",
+  "@importErrorGeneric": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "importNoFile": "No file selected",
+  "importFileMissing": "File not found",
+  "importSampleFailed": "Sample import failed: {error}",
+  "@importSampleFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "importParseFailed": "Parse failed: {error}",
+  "@importParseFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "importUnknownType": "Unknown pack type: {type}",
+  "@importUnknownType": {
+    "placeholders": {
+      "type": {"type": "String"}
+    }
+  },
+  "importJsonFailed": "JSON error: {error}",
+  "@importJsonFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "importSoundFailedWith": "Import failed: {detail}",
+  "@importSoundFailedWith": {
+    "placeholders": {
+      "detail": {"type": "String"}
+    }
+  },
+  "cannotParseSoundData": "Couldn’t parse sound data",
+  "importSoundSuccessNamed": "Imported: {name}",
+  "@importSoundSuccessNamed": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "importCategoryFailedWith": "Category import failed: {error}",
+  "@importCategoryFailedWith": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "importBackupFailedWith": "Backup import failed: {error}",
+  "@importBackupFailedWith": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "successImportCategoryCount": "Imported {count} sounds from \"{category}\"",
+  "@successImportCategoryCount": {
+    "placeholders": {
+      "category": {"type": "String"},
+      "count": {"type": "int"}
+    }
+  },
+  "successImportCount": "Imported {count} sounds",
+  "@successImportCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "importFailuresLine": "\nFailed {failed}: {detail}",
+  "@importFailuresLine": {
+    "placeholders": {
+      "failed": {"type": "int"},
+      "detail": {"type": "String"}
+    }
+  },
+  "unknownError": "Unknown error",
+  "audioTrimFailed": "Couldn’t trim audio:\n{msg}",
+  "@audioTrimFailed": {
+    "placeholders": {
+      "msg": {"type": "String"}
+    }
+  },
+  "addSoundTitle": "Add sound",
+  "editSoundTitle": "Edit sound",
+  "audioSource": "Audio source",
+  "sourceFile": "File",
+  "sourceUrl": "URL",
+  "audioUrlHint": "Audio URL (http:// or https://)",
+  "pickAudioFile": "Choose audio file *",
+  "pickedAudio": "Selected: {name}",
+  "@pickedAudio": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "clearLink": "Clear",
+  "loading": "Loading…",
+  "preview": "Preview",
+  "stopPlayback": "Stop",
+  "coverImage": "Cover image",
+  "imageUrlHint": "Image URL (optional)",
+  "pickCoverOptional": "Choose cover (optional)",
+  "coverSelected": "Cover selected",
+  "removeCover": "Remove cover",
+  "soundName": "Name",
+  "soundNameHint": "Sound name",
+  "categoryLabel": "Category",
+  "soundSettings": "Sound settings",
+  "previewAudioFirst": "Preview the audio first",
+  "addSoundButton": "Add sound",
+  "saveChanges": "Save",
+  "pickAudioFirst": "Choose a file or enter a URL",
+  "needSoundName": "Enter a name",
+  "urlMustHttp": "URL must start with http:// or https://",
+  "fileNotExist": "File missing or removed",
+  "playbackFailed": "Playback failed: {error}",
+  "@playbackFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "trimSectionTitle": "Trim clip",
+  "trimCannotReadDuration": "Couldn’t read duration; full file will be saved.",
+  "trimPreviewFailed": "Clip preview failed: {error}",
+  "@trimPreviewFailed": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "trimPreviewPlay": "Preview clip",
+  "trimPreviewStop": "Stop clip",
+  "trimHint": "Only the selected range is saved (M4A). Windows/Linux need ffmpeg in PATH.",
+  "needDownloadFirst": "Preview once to download the URL",
+  "clipboardCopied": "Copied",
+  "onboardingTitle": "Welcome!",
+  "onboardingSampleBody": "Import the sample sound pack?\n\nWe’ve put together a curated set for you to try.\n\nYou can also import it later from Export file manager.",
+  "skip": "Skip",
+  "toastFavoriteAdded": "Added to favorites",
+  "toastFavoriteRemoved": "Removed from favorites",
+  "detailName": "Name",
+  "detailCategory": "Category",
+  "detailFavorite": "Favorite",
+  "favoriteYes": "Yes",
+  "favoriteNo": "No",
+  "detailSourceType": "Source",
+  "sourceTypeBuiltin": "Built-in",
+  "sourceTypeLocalFile": "Local file",
+  "sourceTypeNetwork": "URL",
+  "detailSoundPath": "Audio path",
+  "detailImagePath": "Image path",
+  "moveToCategoryTitle": "Move to category",
+  "confirmDeleteSoundsTitle": "Delete sounds?",
+  "confirmDeleteSoundsBody": "Delete {count} sounds? This can’t be undone.",
+  "@confirmDeleteSoundsBody": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "confirmDeleteSingleSoundBody": "Delete \"{name}\"? This can’t be undone.",
+  "@confirmDeleteSingleSoundBody": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "selectedCount": "Selected {count}",
+  "@selectedCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "selectAll": "Select all",
+  "move": "Move",
+  "fabAdd": "Add",
+  "emptyFavorites": "No favorites yet",
+  "emptySearch": "No matching sounds",
+  "emptyCategory": "No sounds in this category",
+  "movedSoundsToCategory": "Moved {count} sounds to {category}",
+  "@movedSoundsToCategory": {
+    "placeholders": {
+      "count": {"type": "int"},
+      "category": {"type": "String"}
+    }
+  },
+  "saveAudioFileTitle": "Save audio file",
+  "saveAudioFileHint": "File name",
+  "audioSaveSuccess": "Audio saved",
+  "imageSaveSuccess": "Image saved",
+  "saveCancelledGeneric": "Save cancelled",
+  "saveFailedWith": "Save failed: {error}",
+  "@saveFailedWith": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "shareFailedWith": "Share failed: {error}",
+  "@shareFailedWith": {
+    "placeholders": {
+      "error": {"type": "String"}
+    }
+  },
+  "exportDirUnavailable": "Couldn’t get export folder",
+  "dialogSaveExportLocation": "Choose where to save",
+  "dialogPickImportFile": "Choose file to import",
+  "soundTileCount": "{count} sounds",
+  "@soundTileCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "unfavorite": "Remove from favorites",
+  "favoriteAdd": "Add to favorites",
+  "exportAsMsb": "Export as .msb",
+  "saveAudioFileAction": "Save audio file",
+  "saveCoverImageAction": "Save cover image",
+  "viewDetails": "View details",
+  "edit": "Edit",
+  "previewName": "Preview",
+  "downloadAudioFailed": "Download failed:\n{msg}",
+  "@downloadAudioFailed": {
+    "placeholders": {
+      "msg": {"type": "String"}
+    }
+  },
+  "exceptionPickAudioFirst": "Choose a file or enter a URL first",
+  "exportCancelledException": "Export cancelled",
+  "defaultExportBackupName": "meme_soundboard_backup",
+  "defaultExportMultiName": "sound_collection"
+}

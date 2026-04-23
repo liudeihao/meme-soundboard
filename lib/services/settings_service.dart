@@ -19,6 +19,12 @@ class SettingsService extends ChangeNotifier {
   static const String _keyHasImportedDefaults = 'has_imported_defaults';
   static const String _keyStartupCategory = 'startup_category';
   static const String _keyCategoriesOrder = 'categories_order';
+  static const String _keyUiLocale = 'ui_locale';
+
+  /// `system` | `zh` | `en`
+  static const String uiLocaleSystem = 'system';
+  static const String uiLocaleZh = 'zh';
+  static const String uiLocaleEn = 'en';
 
   // 默认值
   ThemeMode _themeMode = ThemeMode.system;
@@ -29,6 +35,7 @@ class SettingsService extends ChangeNotifier {
   bool _hasImportedDefaults = false;
   String _startupCategory = '全部'; // 默认启动时显示全部
   late List<String> _categoriesOrder; // 分类显示顺序
+  String _uiLocale = uiLocaleSystem;
 
   // Getters
   ThemeMode get themeMode => _themeMode;
@@ -39,6 +46,21 @@ class SettingsService extends ChangeNotifier {
   bool get hasImportedDefaults => _hasImportedDefaults;
   String get startupCategory => _startupCategory;
   List<String> get categoriesOrder => _categoriesOrder;
+
+  /// 界面语言偏好：`system` / `zh` / `en`
+  String get uiLocale => _uiLocale;
+
+  /// `null` 表示跟随系统，否则为固定界面语言
+  Locale? get localeOverride {
+    switch (_uiLocale) {
+      case uiLocaleZh:
+        return const Locale('zh');
+      case uiLocaleEn:
+        return const Locale('en');
+      default:
+        return null;
+    }
+  }
 
   /// 获取所有分类（根据保存的顺序返回）
   List<String> get allCategories {
@@ -96,6 +118,13 @@ class SettingsService extends ChangeNotifier {
 
     // 分类显示顺序
     _categoriesOrder = _prefs?.getStringList(_keyCategoriesOrder) ?? ['全部', '收藏', '默认'];
+
+    _uiLocale = _prefs?.getString(_keyUiLocale) ?? uiLocaleSystem;
+    if (_uiLocale != uiLocaleSystem &&
+        _uiLocale != uiLocaleZh &&
+        _uiLocale != uiLocaleEn) {
+      _uiLocale = uiLocaleSystem;
+    }
 
     notifyListeners();
   }
@@ -184,15 +213,14 @@ class SettingsService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 获取主题模式的显示文本
-  String getThemeModeText() {
-    switch (_themeMode) {
-      case ThemeMode.system:
-        return '跟随系统';
-      case ThemeMode.light:
-        return '浅色模式';
-      case ThemeMode.dark:
-        return '深色模式';
+  Future<void> setUiLocale(String code) async {
+    if (code != uiLocaleSystem &&
+        code != uiLocaleZh &&
+        code != uiLocaleEn) {
+      return;
     }
+    _uiLocale = code;
+    await _prefs?.setString(_keyUiLocale, code);
+    notifyListeners();
   }
 }

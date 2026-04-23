@@ -8,6 +8,8 @@ import '../services/import_export_service.dart';
 import '../services/database_service.dart';
 import '../services/settings_service.dart';
 import '../utils/app_constants.dart';
+import '../utils/category_l10n.dart';
+import '../l10n/app_localizations.dart';
 import '../widgets/msb_import_preview_dialog.dart';
 
 /// 导出文件信息
@@ -28,20 +30,8 @@ class ExportFileInfo {
     this.soundCount,
   });
 
-  String get typeText {
-    switch (type) {
-      case 'sound':
-        return '单个音效';
-      case 'category':
-        return '分类';
-      case 'multiple':
-        return '多个音效';
-      case 'full':
-        return '完整备份';
-      default:
-        return '未知';
-    }
-  }
+  String typeLabel(AppLocalizations l10n) =>
+      MsbImportPreviewDialog.typeLabel(l10n, type);
 
   String get sizeText {
     if (size < 1024) {
@@ -172,25 +162,26 @@ class _ExportManagerScreenState extends State<ExportManagerScreen> {
   }
 
   Future<void> _deleteFile(ExportFileInfo fileInfo) async {
+    final l10n = AppLocalizations.of(context)!;
     if (fileInfo.isBundledSamplePack) {
-      _showSnackBar('示例音效包不可删除', backgroundColor: Colors.orange);
+      _showSnackBar(l10n.cannotDeleteSamplePack, backgroundColor: Colors.orange);
       return;
     }
 
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('确认删除'),
-        content: Text('确定要删除 "${fileInfo.name}" 吗？'),
+        title: Text(l10n.confirmDelete),
+        content: Text(l10n.confirmDeleteFile(fileInfo.name)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
+            child: Text(l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('删除'),
+            child: Text(l10n.delete),
           ),
         ],
       ),
@@ -200,25 +191,27 @@ class _ExportManagerScreenState extends State<ExportManagerScreen> {
       try {
         await fileInfo.file.delete();
         await _loadFiles();
-        _showSnackBar('已删除');
+        _showSnackBar(l10n.deletedOk);
       } catch (e) {
-        _showSnackBar('删除失败: $e', backgroundColor: Colors.red);
+        _showSnackBar(l10n.deleteFailedWith(e.toString()), backgroundColor: Colors.red);
       }
     }
   }
 
   Future<void> _shareFile(ExportFileInfo fileInfo) async {
+    final l10n = AppLocalizations.of(context)!;
     try {
       await Share.shareXFiles(
         [XFile(fileInfo.file.path)],
-        text: '分享音效文件: ${fileInfo.name}',
+        text: l10n.shareSoundFile(fileInfo.name),
       );
     } catch (e) {
-      _showSnackBar('分享失败: $e', backgroundColor: Colors.red);
+      _showSnackBar(l10n.shareFailedWith(e.toString()), backgroundColor: Colors.red);
     }
   }
 
   Future<void> _importFile(ExportFileInfo fileInfo) async {
+    final l10n = AppLocalizations.of(context)!;
     try {
       final content = await fileInfo.file.readAsString();
       final json = jsonDecode(content) as Map<String, dynamic>;
@@ -251,11 +244,11 @@ class _ExportManagerScreenState extends State<ExportManagerScreen> {
 
         default:
           if (mounted) {
-            _showSnackBar('未知的文件类型', backgroundColor: Colors.red);
+            _showSnackBar(l10n.unknownFileType, backgroundColor: Colors.red);
           }
       }
     } catch (e) {
-      _showSnackBar('读取文件失败: $e', backgroundColor: Colors.red);
+      _showSnackBar(l10n.readFileFailed(e.toString()), backgroundColor: Colors.red);
     }
   }
 
@@ -265,23 +258,24 @@ class _ExportManagerScreenState extends State<ExportManagerScreen> {
   ) async {
     if (!mounted) return;
 
+    final l10n = AppLocalizations.of(context)!;
     final result = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('选择导入方式'),
-        content: const Text('如何导入此分类中的音效？'),
+        title: Text(l10n.chooseImportMethod),
+        content: Text(l10n.howImportCategory),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
+            child: Text(l10n.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, 'keep'),
-            child: const Text('保持原分类'),
+            child: Text(l10n.keepOriginalCategory),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, 'select'),
-            child: const Text('选择新分类'),
+            child: Text(l10n.pickNewCategory),
           ),
         ],
       ),
@@ -303,8 +297,9 @@ class _ExportManagerScreenState extends State<ExportManagerScreen> {
   Future<void> _showSelectCategoryDialog(String fileContent) async {
     if (!mounted) return;
 
+    final l10n = AppLocalizations.of(context)!;
     List<String> validCategories = [
-      '默认',
+      AppConstants.categoryDefault,
       ...SettingsService.instance.customCategories,
     ];
     String? selectedCategory = validCategories.first;
@@ -316,7 +311,7 @@ class _ExportManagerScreenState extends State<ExportManagerScreen> {
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) {
           return AlertDialog(
-            title: const Text('选择导入分类'),
+            title: Text(l10n.selectImportCategory),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -326,7 +321,7 @@ class _ExportManagerScreenState extends State<ExportManagerScreen> {
                     DropdownButtonFormField<String>(
                       value: selectedCategory,
                       decoration: InputDecoration(
-                        labelText: '选择分类',
+                        labelText: l10n.pickCategory,
                         prefixIcon: const Icon(Icons.folder_rounded),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -335,7 +330,7 @@ class _ExportManagerScreenState extends State<ExportManagerScreen> {
                       items: validCategories.map((category) {
                         return DropdownMenuItem(
                           value: category,
-                          child: Text(category),
+                          child: Text(l10n.categoryLabelForStored(category)),
                         );
                       }).toList(),
                       onChanged: (value) {
@@ -350,14 +345,14 @@ class _ExportManagerScreenState extends State<ExportManagerScreen> {
                         setDialogState(() => showNewCategoryInput = true);
                       },
                       icon: const Icon(Icons.add_rounded),
-                      label: const Text('新建分类'),
+                      label: Text(l10n.newCategory),
                     ),
                   ] else ...[
                     TextField(
                       controller: newCategoryController,
                       decoration: InputDecoration(
-                        labelText: '新分类名称',
-                        hintText: '输入新分类名称',
+                        labelText: l10n.newCategoryName,
+                        hintText: l10n.newCategoryHint,
                         prefixIcon: const Icon(Icons.create_new_folder_rounded),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -373,7 +368,7 @@ class _ExportManagerScreenState extends State<ExportManagerScreen> {
                               setDialogState(() => showNewCategoryInput = false);
                               newCategoryController.clear();
                             },
-                            child: const Text('取消'),
+                            child: Text(l10n.cancel),
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -386,7 +381,7 @@ class _ExportManagerScreenState extends State<ExportManagerScreen> {
                                 if (mounted) {
                                   setDialogState(() {
                                     validCategories = [
-                                      '默认',
+                                      AppConstants.categoryDefault,
                                       ...SettingsService.instance.customCategories,
                                     ];
                                     selectedCategory = newCategory;
@@ -396,7 +391,7 @@ class _ExportManagerScreenState extends State<ExportManagerScreen> {
                                 }
                               }
                             },
-                            child: const Text('确定'),
+                            child: Text(l10n.confirm),
                           ),
                         ),
                       ],
@@ -408,27 +403,24 @@ class _ExportManagerScreenState extends State<ExportManagerScreen> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text('取消'),
+                child: Text(l10n.cancel),
               ),
               FilledButton(
                 onPressed: selectedCategory == null ? null : () async {
                   Navigator.pop(context);
-                  // 导入时更改分类
                   final json = jsonDecode(fileContent) as Map<String, dynamic>;
                   final sounds = json['data'] as List?;
                   if (sounds != null) {
-                    // 修改每个音效的分类为选中的分类
                     for (int i = 0; i < sounds.length; i++) {
                       if (sounds[i] is Map<String, dynamic>) {
                         (sounds[i] as Map<String, dynamic>)['category'] = selectedCategory;
                       }
                     }
                     json['data'] = sounds;
-                    // 导入修改后的内容
                     await _performImport(jsonEncode(json));
                   }
                 },
-                child: const Text('确定'),
+                child: Text(l10n.confirm),
               ),
             ],
           );
@@ -443,31 +435,32 @@ class _ExportManagerScreenState extends State<ExportManagerScreen> {
   ) async {
     if (!mounted) return;
 
+    final l10n = AppLocalizations.of(context)!;
     final result = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('导入完整备份'),
-        content: const Column(
+        title: Text(l10n.importFullBackupTitle),
+        content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('完整备份将导入所有音效和设置。'),
-            SizedBox(height: 12),
-            Text('请选择导入方式：'),
+            Text(l10n.importFullBackupBody),
+            const SizedBox(height: 12),
+            Text(l10n.importFullBackupChoose),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
+            child: Text(l10n.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, 'add'),
-            child: const Text('添加到现有数据'),
+            child: Text(l10n.mergeIntoExisting),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, 'replace'),
-            child: const Text('替换所有数据'),
+            child: Text(l10n.replaceAllData),
           ),
         ],
       ),
@@ -476,21 +469,20 @@ class _ExportManagerScreenState extends State<ExportManagerScreen> {
     if (result == null) return;
 
     if (result == 'replace') {
-      // 显示确认对话框
       if (!mounted) return;
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('确认替换'),
-          content: const Text('此操作将删除所有现有的音效和设置，并替换为备份数据。\n\n此操作无法撤销，请确认是否继续。'),
+          title: Text(l10n.confirmReplaceTitle),
+          content: Text(l10n.confirmReplaceBody),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('取消'),
+              child: Text(l10n.cancel),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('确认替换'),
+              child: Text(l10n.confirmReplace),
             ),
           ],
         ),
@@ -498,19 +490,20 @@ class _ExportManagerScreenState extends State<ExportManagerScreen> {
 
       if (confirmed != true || !mounted) return;
 
-      // 执行替换导入
       await _performImport(fileContent, clearFirst: true);
     } else {
-      // 添加到现有数据
       await _performImport(fileContent);
     }
   }
 
   Future<void> _performImport(String content, {bool clearFirst = false}) async {
+    if (!mounted) return;
+    final l10n = AppLocalizations.of(context)!;
     try {
       final result = await _importExportService.importFromContent(
         content,
         clearFirst: clearFirst,
+        l10n: l10n,
       );
       
       widget.onDataChanged?.call();
@@ -522,21 +515,22 @@ class _ExportManagerScreenState extends State<ExportManagerScreen> {
         );
       }
     } catch (e) {
-      _showSnackBar('导入失败: $e', backgroundColor: Colors.red);
+      _showSnackBar(l10n.importFailed(e.toString()), backgroundColor: Colors.red);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('管理导出文件'),
+        title: Text(l10n.exportManagerTitle),
         centerTitle: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadFiles,
-            tooltip: '刷新',
+            tooltip: l10n.refresh,
           ),
         ],
       ),
@@ -549,6 +543,7 @@ class _ExportManagerScreenState extends State<ExportManagerScreen> {
   }
 
   Widget _buildEmptyState() {
+    final l10n = AppLocalizations.of(context)!;
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -560,7 +555,7 @@ class _ExportManagerScreenState extends State<ExportManagerScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            '暂无导出文件',
+            l10n.exportDirEmpty,
             style: TextStyle(
               fontSize: 16,
               color: Colors.grey.shade500,
@@ -568,7 +563,16 @@ class _ExportManagerScreenState extends State<ExportManagerScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            _exportDir ?? '无法获取导出目录',
+            l10n.exportDirEmptyHint,
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.grey.shade500,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _exportDir ?? l10n.exportDirUnavailable,
             style: TextStyle(
               fontSize: 12,
               color: Colors.grey.shade400,
@@ -593,6 +597,7 @@ class _ExportManagerScreenState extends State<ExportManagerScreen> {
 
   Widget _buildFileCard(ExportFileInfo fileInfo) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
     
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -643,7 +648,7 @@ class _ExportManagerScreenState extends State<ExportManagerScreen> {
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(
-                              '内置示例 · 不可删除',
+                              l10n.builtInSampleNoDelete,
                               style: TextStyle(
                                 fontSize: 12,
                                 color: Colors.amber.shade900,
@@ -669,7 +674,7 @@ class _ExportManagerScreenState extends State<ExportManagerScreen> {
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
-                              fileInfo.typeText,
+                              fileInfo.typeLabel(l10n),
                               style: TextStyle(
                                 fontSize: 11,
                                 color: theme.primaryColor,
@@ -687,7 +692,7 @@ class _ExportManagerScreenState extends State<ExportManagerScreen> {
                           if (fileInfo.soundCount != null) ...[
                             const SizedBox(width: 8),
                             Text(
-                              '${fileInfo.soundCount}个音效',
+                              l10n.soundTileCount(fileInfo.soundCount!),
                               style: TextStyle(
                                 fontSize: 12,
                                 color: Colors.grey.shade600,
@@ -721,6 +726,7 @@ class _ExportManagerScreenState extends State<ExportManagerScreen> {
   }
 
   void _showFileOptions(ExportFileInfo fileInfo) {
+    final l10n = AppLocalizations.of(context)!;
     showModalBottomSheet(
       context: context,
       builder: (context) => SafeArea(
@@ -738,8 +744,8 @@ class _ExportManagerScreenState extends State<ExportManagerScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.info_rounded, color: Colors.blue),
-              title: const Text('文件详情'),
-              subtitle: const Text('查看完整文件信息'),
+              title: Text(l10n.fileDetails),
+              subtitle: Text(l10n.fileDetailsSubtitle),
               onTap: () {
                 Navigator.pop(context);
                 _showFileDetails(fileInfo);
@@ -747,8 +753,8 @@ class _ExportManagerScreenState extends State<ExportManagerScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.file_download_rounded, color: Colors.blue),
-              title: const Text('导入'),
-              subtitle: const Text('将此文件导入到应用'),
+              title: Text(l10n.importThisFile),
+              subtitle: Text(l10n.importThisFileSubtitle),
               onTap: () {
                 Navigator.pop(context);
                 _importFile(fileInfo);
@@ -756,8 +762,8 @@ class _ExportManagerScreenState extends State<ExportManagerScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.share_rounded, color: Colors.green),
-              title: const Text('分享'),
-              subtitle: const Text('分享到微信、QQ等'),
+              title: Text(l10n.share),
+              subtitle: Text(l10n.shareSubtitle),
               onTap: () {
                 Navigator.pop(context);
                 _shareFile(fileInfo);
@@ -771,11 +777,11 @@ class _ExportManagerScreenState extends State<ExportManagerScreen> {
                     ? Colors.grey.shade400
                     : Colors.red,
               ),
-              title: const Text('删除'),
+              title: Text(l10n.deleteFile),
               subtitle: Text(
                 fileInfo.isBundledSamplePack
-                    ? '示例音效包不可删除'
-                    : '删除此导出文件',
+                    ? l10n.samplePackNoDeleteSubtitle
+                    : l10n.deleteFileSubtitle,
               ),
               onTap: fileInfo.isBundledSamplePack
                   ? null
@@ -806,7 +812,8 @@ class _ExportManagerScreenState extends State<ExportManagerScreen> {
       );
     } catch (e) {
       if (mounted) {
-        _showSnackBar('无法读取文件详情: $e', backgroundColor: Colors.red);
+        final l10n = AppLocalizations.of(context)!;
+        _showSnackBar(l10n.fileDetailsReadError(e.toString()), backgroundColor: Colors.red);
       }
     }
   }

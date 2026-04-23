@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 import '../models/sound_item.dart';
+import '../utils/category_l10n.dart';
 
 /// 音效详情/操作底部弹窗
 class SoundBottomSheet extends StatelessWidget {
@@ -31,6 +33,7 @@ class SoundBottomSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
 
     return Container(
       decoration: BoxDecoration(
@@ -120,7 +123,7 @@ class SoundBottomSheet extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Text(
-                                sound.category,
+                                l10n.categoryLabelForStored(sound.category),
                                 style: TextStyle(
                                   fontSize: 12,
                                   color:
@@ -160,7 +163,7 @@ class SoundBottomSheet extends StatelessWidget {
               context,
               icon: sound.isFavorite ? Icons.favorite : Icons.favorite_border,
               iconColor: Colors.red,
-              title: sound.isFavorite ? '取消收藏' : '添加到收藏',
+              title: sound.isFavorite ? l10n.unfavorite : l10n.favoriteAdd,
               onTap: () {
                 onToggleFavorite();
                 Navigator.pop(context);
@@ -172,7 +175,7 @@ class SoundBottomSheet extends StatelessWidget {
                 context,
                 icon: Icons.share_rounded,
                 iconColor: Colors.blue,
-                title: '分享',
+                title: l10n.share,
                 onTap: () {
                   onShare!();
                   Navigator.pop(context);
@@ -184,7 +187,7 @@ class SoundBottomSheet extends StatelessWidget {
                 context,
                 icon: Icons.upload_file_rounded,
                 iconColor: Colors.teal,
-                title: '导出为 .msb 文件',
+                title: l10n.exportAsMsb,
                 onTap: () {
                   Navigator.pop(context);
                   onExport!();
@@ -196,7 +199,7 @@ class SoundBottomSheet extends StatelessWidget {
                 context,
                 icon: Icons.audio_file_rounded,
                 iconColor: Colors.purple,
-                title: '保存音频文件',
+                title: l10n.saveAudioFileAction,
                 onTap: () {
                   Navigator.pop(context);
                   onSaveAudio!();
@@ -208,7 +211,7 @@ class SoundBottomSheet extends StatelessWidget {
                 context,
                 icon: Icons.image_rounded,
                 iconColor: Colors.green,
-                title: '保存封面图片',
+                title: l10n.saveCoverImageAction,
                 onTap: () {
                   Navigator.pop(context);
                   onSaveImage!();
@@ -220,7 +223,7 @@ class SoundBottomSheet extends StatelessWidget {
                 context,
                 icon: Icons.info_outline_rounded,
                 iconColor: Colors.blueGrey,
-                title: '查看详情',
+                title: l10n.viewDetails,
                 onTap: () {
                   Navigator.pop(context);
                   onShowDetails!();
@@ -232,7 +235,7 @@ class SoundBottomSheet extends StatelessWidget {
                 context,
                 icon: Icons.edit_rounded,
                 iconColor: Colors.orange,
-                title: '编辑',
+                title: l10n.edit,
                 onTap: () {
                   Navigator.pop(context);
                   onEdit!();
@@ -244,10 +247,10 @@ class SoundBottomSheet extends StatelessWidget {
                 context,
                 icon: Icons.delete_rounded,
                 iconColor: Colors.red,
-                title: '删除',
+                title: l10n.delete,
                 onTap: () {
                   Navigator.pop(context);
-                  _showDeleteConfirmation(context);
+                  _showDeleteConfirmation(context, l10n);
                 },
               ),
 
@@ -290,17 +293,17 @@ class SoundBottomSheet extends StatelessWidget {
     );
   }
 
-  void _showDeleteConfirmation(BuildContext context) {
+  void _showDeleteConfirmation(BuildContext context, AppLocalizations l10n) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('确认删除'),
-        content: Text('确定要删除"${sound.name}"吗？此操作不可恢复。'),
+        title: Text(l10n.confirmDelete),
+        content: Text(l10n.confirmDeleteSingleSoundBody(sound.name)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
+            child: Text(l10n.cancel),
           ),
           ElevatedButton(
             onPressed: () {
@@ -311,7 +314,7 @@ class SoundBottomSheet extends StatelessWidget {
               backgroundColor: Colors.red,
               foregroundColor: Colors.white,
             ),
-            child: const Text('删除'),
+            child: Text(l10n.delete),
           ),
         ],
       ),
