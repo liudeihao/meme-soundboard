@@ -1,9 +1,16 @@
+import 'dart:async';
 import 'dart:io';
+
+import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+
+import '../models/audio_trim_range.dart';
 import '../models/sound_item.dart';
-import '../services/settings_service.dart';
 import '../services/audio_service.dart';
+import '../services/audio_trim_service.dart';
 import '../services/file_service.dart';
+import '../services/settings_service.dart';
 
 /// 添加/编辑音效对话框
 class AddSoundDialog extends StatefulWidget {
@@ -15,6 +22,7 @@ class AddSoundDialog extends StatefulWidget {
     String? imagePath,
     SoundSourceType sourceType,
     SoundAdvancedSettings advancedSettings,
+    AudioTrimRange? trimRange,
   )
   onConfirm;
   final Future<dynamic> Function()? onSelectAudio; // 返回 Map 或 null
@@ -59,10 +67,21 @@ class _AddSoundDialogState extends State<AddSoundDialog> {
   // 高级设置
   double _volumeLevel = 1.0;
 
+  // 截取片段（仅新增、非 Web）
+  Duration? _audioTotalDuration;
+  bool _durationProbeInProgress = false;
+  double _trimStartSec = 0;
+  double _trimEndSec = 0;
+  String? _urlLocalCachedPath;
+  late final AudioPlayer _trimPreviewPlayer;
+  Timer? _trimPreviewTimer;
+  bool _trimPreviewPlaying = false;
+
   @override
   void initState() {
     super.initState();
     _previewAudioService = AudioService();
+    _trimPreviewPlayer = AudioPlayer();
     _nameController = TextEditingController(
       text: widget.existingSound?.name ?? '',
     );
@@ -107,11 +126,95 @@ class _AddSoundDialogState extends State<AddSoundDialog> {
 
   @override
   void dispose() {
+    _trimPreviewTimer?.cancel();
+    unawaited(_trimPreviewPlayer.release());
     _nameController.dispose();
     _newCategoryController.dispose();
     _audioUrlController.dispose();
     _imageUrlController.dispose();
     super.dispose();
+  }
+
+  String? get _trimLocalSourcePath =>
+      _useAudioUrl ? _urlLocalCachedPath : _tempSoundPath;
+
+  Future<void> _reloadDurationForTrim(String path) async {
+    if (!mounted || widget.existingSound != null || kIsWeb) return;
+    setState(() {
+      _durationProbeInProgress = true;
+      _audioTotalDuration = null;
+      _trimStartSec = 0;
+      _trimEndSec = 0;
+    });
+    final d = await AudioTrimService.probeDuration(path);
+    if (!mounted) return;
+    setState(() {
+      _durationProbeInProgress = false;
+      _audioTotalDuration = d;
+      if (d != null && d > Duration.zero) {
+        _trimEndSec = d.inMilliseconds / 1000.0;
+        _trimStartSec = 0;
+      }
+    });
+  }
+
+  Future<void> _stopTrimPreviewSilently() async {
+    _trimPreviewTimer?.cancel();
+    _trimPreviewTimer = null;
+    try {
+      await _trimPreviewPlayer.stop();
+    } catch (_) {}
+    if (mounted) setState(() => _trimPreviewPlaying = false);
+  }
+
+  String _formatSeconds(double sec) {
+    if (sec.isNaN || sec < 0) return '00:00';
+    final s = sec.floor();
+    final m = s ~/ 60;
+    final r = s % 60;
+    return '${m.toString().padLeft(2, '0')}:${r.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _previewTrimSegment() async {
+    final path = _trimLocalSourcePath;
+    final total = _audioTotalDuration;
+    if (path == null || total == null || total <= Duration.zero) return;
+
+    if (_trimPreviewPlaying) {
+      await _stopTrimPreviewSilently();
+      return;
+    }
+
+    await _previewAudioService.stopCurrent();
+    if (mounted) setState(() => _isPreviewPlaying = false);
+
+    var startSec = _trimStartSec.clamp(0.0, _trimEndSec);
+    var endSec = _trimEndSec.clamp(startSec + 0.25, total.inMilliseconds / 1000.0);
+    if (endSec - startSec < 0.25) {
+      endSec = (startSec + 0.25).clamp(0.25, total.inMilliseconds / 1000.0);
+    }
+    final start = Duration(milliseconds: (startSec * 1000).round());
+    final end = Duration(milliseconds: (endSec * 1000).round());
+    final len = end - start;
+    if (len <= Duration.zero) return;
+
+    try {
+      await _trimPreviewPlayer.play(DeviceFileSource(path), position: start);
+      if (mounted) setState(() => _trimPreviewPlaying = true);
+      _trimPreviewTimer?.cancel();
+      _trimPreviewTimer = Timer(len, () async {
+        await _stopTrimPreviewSilently();
+        if (mounted) setState(() => _hasPreviewedAudio = true);
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _previewValidationError =
+              '片段预览失败: ${e.toString().replaceFirst('Exception: ', '')}';
+          _trimPreviewPlaying = false;
+        });
+      }
+    }
   }
 
   List<String> get _availableCategories {
@@ -141,6 +244,7 @@ class _AddSoundDialogState extends State<AddSoundDialog> {
             _tempSoundPath = soundPath; // 真实的音频路径用于保存
             _useAudioUrl = false;
             _audioUrlController.clear();
+            _urlLocalCachedPath = null;
             // 选择新文件时重置预览标记
             _hasPreviewedAudio = false;
             _previewValidationError = null;
@@ -153,6 +257,7 @@ class _AddSoundDialogState extends State<AddSoundDialog> {
               _nameController.text = nameWithoutExt;
             }
           });
+          unawaited(_reloadDurationForTrim(soundPath));
         }
       } catch (e) {
         setState(() {
@@ -205,6 +310,8 @@ class _AddSoundDialogState extends State<AddSoundDialog> {
       return;
     }
 
+    await _stopTrimPreviewSilently();
+
     if (_isPreviewPlaying) {
       // 停止播放
       await _previewAudioService.stopCurrent();
@@ -253,6 +360,13 @@ class _AddSoundDialogState extends State<AddSoundDialog> {
       );
 
       await _previewAudioService.play(tempSound);
+      if (_useAudioUrl) {
+        _urlLocalCachedPath = effectivePath;
+        unawaited(_reloadDurationForTrim(effectivePath));
+      } else if (_tempSoundPath == effectivePath &&
+          _audioTotalDuration == null) {
+        unawaited(_reloadDurationForTrim(effectivePath));
+      }
       setState(() {
         _isPreviewPlaying = true;
         _isLoading = false;
@@ -304,6 +418,32 @@ class _AddSoundDialogState extends State<AddSoundDialog> {
     try {
       final advSettings = SoundAdvancedSettings(volumeLevel: _volumeLevel);
 
+      AudioTrimRange? trimParam;
+      if (widget.existingSound == null &&
+          !kIsWeb &&
+          _audioTotalDuration != null &&
+          _audioTotalDuration! > Duration.zero) {
+        final total = _audioTotalDuration!;
+        var startMs = (_trimStartSec * 1000)
+            .round()
+            .clamp(0, total.inMilliseconds);
+        var endMs = (_trimEndSec * 1000)
+            .round()
+            .clamp(0, total.inMilliseconds);
+        if (endMs <= startMs) {
+          endMs = total.inMilliseconds;
+        }
+        final range = AudioTrimRange(
+          start: Duration(milliseconds: startMs),
+          end: Duration(milliseconds: endMs),
+        );
+        if (range.isValid &&
+            !range.isEffectivelyFull(total) &&
+            (range.end - range.start) >= const Duration(milliseconds: 200)) {
+          trimParam = range;
+        }
+      }
+
       await widget.onConfirm(
         _nameController.text.trim(),
         category,
@@ -311,6 +451,7 @@ class _AddSoundDialogState extends State<AddSoundDialog> {
         _effectiveImagePath,
         _sourceType,
         advSettings,
+        trimParam,
       );
       if (mounted) {
         Navigator.of(context).pop(true);
@@ -323,6 +464,106 @@ class _AddSoundDialogState extends State<AddSoundDialog> {
         });
       }
     }
+  }
+
+  Widget _buildAudioTrimPanel(ThemeData theme) {
+    final src = _trimLocalSourcePath;
+    if (src == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.content_cut_rounded, size: 20, color: theme.primaryColor),
+              const SizedBox(width: 8),
+              const Text('截取片段', style: TextStyle(fontWeight: FontWeight.w600)),
+            ],
+          ),
+          if (_durationProbeInProgress)
+            const Padding(
+              padding: EdgeInsets.only(top: 12),
+              child: LinearProgressIndicator(),
+            )
+          else if (_audioTotalDuration == null ||
+              _audioTotalDuration! <= Duration.zero)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                '无法读取时长，将保存完整音频。',
+                style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
+              ),
+            )
+          else
+            Builder(
+              builder: (context) {
+                final maxSec = _audioTotalDuration!.inMilliseconds / 1000.0;
+                if (maxSec <= 0) return const SizedBox.shrink();
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        '${_formatSeconds(_trimStartSec)} — ${_formatSeconds(_trimEndSec)} · 总长 ${_formatSeconds(maxSec)}',
+                        style: TextStyle(
+                          color: Colors.grey.shade800,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                    RangeSlider(
+                      values: () {
+                        final lo = _trimStartSec.clamp(0.0, maxSec);
+                        final hi = _trimEndSec.clamp(lo + 0.25, maxSec);
+                        return RangeValues(lo, hi);
+                      }(),
+                      min: 0,
+                      max: maxSec,
+                      onChanged: (v) {
+                        var a = v.start;
+                        var b = v.end;
+                        if (b - a < 0.25) {
+                          b = (a + 0.25).clamp(0.25, maxSec);
+                        }
+                        setState(() {
+                          _trimStartSec = a;
+                          _trimEndSec = b;
+                        });
+                      },
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: _isLoading ? null : _previewTrimSegment,
+                      icon: Icon(
+                        _trimPreviewPlaying
+                            ? Icons.stop_rounded
+                            : Icons.play_circle_outline_rounded,
+                      ),
+                      label: Text(
+                        _trimPreviewPlaying ? '停止片段' : '试听片段',
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Text(
+                        '添加时将仅保留所选区间（导出为 M4A）。Windows / Linux 需已安装 ffmpeg。',
+                        style: TextStyle(
+                          color: Colors.grey.shade600,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -405,11 +646,15 @@ class _AddSoundDialogState extends State<AddSoundDialog> {
                           }
 
                           _useAudioUrl = val;
-                          if (!val)
+                          if (!val) {
                             _audioUrlController.clear();
-                          else {
+                          } else {
                             _selectedAudioPath = null;
                             _tempSoundPath = null;
+                            _urlLocalCachedPath = null;
+                            _audioTotalDuration = null;
+                            _trimStartSec = 0;
+                            _trimEndSec = 0;
                           }
                           // 改变音频来源时重置预览标记
                           _hasPreviewedAudio = false;
@@ -549,6 +794,8 @@ class _AddSoundDialogState extends State<AddSoundDialog> {
                               ),
                           ],
                         ),
+                      if (!kIsWeb && widget.existingSound == null)
+                        _buildAudioTrimPanel(theme),
                       const SizedBox(height: 16),
                     ],
 

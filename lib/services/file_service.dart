@@ -53,6 +53,12 @@ class FileService {
     return soundDir;
   }
 
+  /// User-imported sound files directory (same as [_appDir]).
+  Future<String> getUserSoundsDirectoryPath() async {
+    final d = await _appDir;
+    return d.path;
+  }
+
   /// 获取缩略图存储目录
   Future<Directory> get _thumbnailDir async {
     final dir = await getApplicationDocumentsDirectory();

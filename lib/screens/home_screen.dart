@@ -2,8 +2,11 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:path/path.dart' as p;
+import 'package:uuid/uuid.dart';
 import '../models/sound_item.dart';
 import '../services/audio_service.dart';
+import '../services/audio_trim_service.dart';
 import '../services/database_service.dart';
 import '../services/file_service.dart';
 import '../services/external_import_bridge.dart';
@@ -536,6 +539,7 @@ class _HomeScreenState extends State<HomeScreen>
               imagePath,
               sourceType,
               advSettings,
+              trimRange,
             ) async {
               // 预先生成新音效的 ID，用于关联音频和图片文件
               final newSoundId =
@@ -556,6 +560,42 @@ class _HomeScreenState extends State<HomeScreen>
                 } catch (e) {
                   final errorMsg = e.toString().replaceFirst('Exception: ', '');
                   throw Exception('下载音频失败:\n$errorMsg');
+                }
+              }
+
+              if (trimRange != null && trimRange.isValid) {
+                final total =
+                    await AudioTrimService.probeDuration(effectiveSoundPath);
+                if (total != null &&
+                    total > Duration.zero &&
+                    !trimRange.isEffectivelyFull(total)) {
+                  final dir = await _fileService.getUserSoundsDirectoryPath();
+                  final outPath = p.join(dir, '${Uuid().v4()}.m4a');
+                  var start = trimRange.start;
+                  var end = trimRange.end;
+                  if (start < Duration.zero) start = Duration.zero;
+                  if (end > total) end = total;
+                  if (end - start >= const Duration(milliseconds: 200)) {
+                    try {
+                      await AudioTrimService.trimToFile(
+                        inputPath: effectiveSoundPath,
+                        outputPath: outPath,
+                        start: start,
+                        end: end,
+                      );
+                      try {
+                        final f = File(effectiveSoundPath);
+                        if (await f.exists() && f.path != outPath) {
+                          await f.delete();
+                        }
+                      } catch (_) {}
+                      effectiveSoundPath = outPath;
+                    } catch (e) {
+                      final msg =
+                          e.toString().replaceFirst('Exception: ', '');
+                      throw Exception('音频截取失败:\n$msg');
+                    }
+                  }
                 }
               }
 
@@ -649,7 +689,7 @@ class _HomeScreenState extends State<HomeScreen>
           return null;
         },
         onConfirm:
-            (name, category, _, imagePath, sourceType, advSettings) async {
+            (name, category, _, imagePath, sourceType, advSettings, _) async {
               var effectiveImagePath =
                   imagePath ?? newImagePath ?? sound.imagePath;
 
