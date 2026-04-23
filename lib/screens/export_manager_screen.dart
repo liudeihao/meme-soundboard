@@ -52,6 +52,9 @@ class ExportFileInfo {
       return '${(size / (1024 * 1024)).toStringAsFixed(1)} MB';
     }
   }
+
+  /// Bundled sample pack copy under export dir (basename has no extension).
+  bool get isBundledSamplePack => name == AppConstants.samplePackName;
 }
 
 /// 导出目录管理页面
@@ -169,9 +172,8 @@ class _ExportManagerScreenState extends State<ExportManagerScreen> {
   }
 
   Future<void> _deleteFile(ExportFileInfo fileInfo) async {
-    // 防止删除示例音效包
-    if (fileInfo.name == '${AppConstants.samplePackName}.msb') {
-      _showSnackBar('无法删除示例音效包', backgroundColor: Colors.orange);
+    if (fileInfo.isBundledSamplePack) {
+      _showSnackBar('示例音效包不可删除', backgroundColor: Colors.orange);
       return;
     }
 
@@ -629,6 +631,29 @@ class _ExportManagerScreenState extends State<ExportManagerScreen> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
+                    if (fileInfo.isBundledSamplePack) ...[
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.shield_outlined,
+                            size: 15,
+                            color: Colors.amber.shade800,
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              '内置示例 · 不可删除',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.amber.shade900,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                     const SizedBox(height: 4),
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
@@ -739,13 +764,25 @@ class _ExportManagerScreenState extends State<ExportManagerScreen> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.delete_rounded, color: Colors.red),
+              enabled: !fileInfo.isBundledSamplePack,
+              leading: Icon(
+                Icons.delete_rounded,
+                color: fileInfo.isBundledSamplePack
+                    ? Colors.grey.shade400
+                    : Colors.red,
+              ),
               title: const Text('删除'),
-              subtitle: const Text('删除此导出文件'),
-              onTap: () {
-                Navigator.pop(context);
-                _deleteFile(fileInfo);
-              },
+              subtitle: Text(
+                fileInfo.isBundledSamplePack
+                    ? '示例音效包不可删除'
+                    : '删除此导出文件',
+              ),
+              onTap: fileInfo.isBundledSamplePack
+                  ? null
+                  : () {
+                      Navigator.pop(context);
+                      _deleteFile(fileInfo);
+                    },
             ),
             const SizedBox(height: 8),
           ],
@@ -754,56 +791,23 @@ class _ExportManagerScreenState extends State<ExportManagerScreen> {
     );
   }
 
-  /// 显示文件详情对话框
-  void _showFileDetails(ExportFileInfo fileInfo) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('文件详情'),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildDetailRow('文件名', fileInfo.file.path.split(Platform.pathSeparator).last),
-              _buildDetailRow('类型', fileInfo.typeText),
-              _buildDetailRow('大小', fileInfo.sizeText),
-              _buildDetailRow('修改时间', DateFormat('yyyy-MM-dd HH:mm:ss').format(fileInfo.modifiedTime)),
-              if (fileInfo.soundCount != null)
-                _buildDetailRow('音效数量', '${fileInfo.soundCount}个'),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('关闭'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDetailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-              color: Colors.grey.shade600,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: const TextStyle(fontFamily: 'monospace'),
-          ),
-        ],
-      ),
-    );
+  /// 显示文件详情（与导入预览一致的包内容列表）
+  Future<void> _showFileDetails(ExportFileInfo fileInfo) async {
+    try {
+      final text = await fileInfo.file.readAsString();
+      final json = jsonDecode(text) as Map<String, dynamic>;
+      if (!mounted) return;
+      await MsbImportPreviewDialog.showPackDetails(
+        context,
+        displayName: fileInfo.name,
+        json: json,
+        sizeBytes: fileInfo.size,
+        modifiedTime: fileInfo.modifiedTime,
+      );
+    } catch (e) {
+      if (mounted) {
+        _showSnackBar('无法读取文件详情: $e', backgroundColor: Colors.red);
+      }
+    }
   }
 }
