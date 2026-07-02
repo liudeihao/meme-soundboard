@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/images/logo.jpg" alt="梗音效 Logo" width="120" />
+  <img src="docs/images/logo.jpg" alt="梗音效 Logo" width="280" />
 </p>
 
 <h1 align="center">🔊 梗音效 (meme_soundboard)</h1>
@@ -16,12 +16,12 @@
 </p>
 
 <p align="center">
-  <video src="docs/images/demo.mp4" width="720" autoplay loop muted playsinline controls>
-    您的浏览器不支持视频播放，请<a href="docs/images/demo.mp4">下载观看</a>。
+  <video src="https://github.com/liudeihao/meme-soundboard/releases/download/v1.0.1/demo.mp4" width="720" controls muted loop playsinline>
+    您的浏览器不支持视频播放。
   </video>
 </p>
 
-<p align="center"><sub>🎬 应用演示视频</sub></p>
+<p align="center"><sub>🎬 应用演示视频 · <a href="https://github.com/liudeihao/meme-soundboard/blob/master/docs/images/demo.mp4">若无法播放，点此在 GitHub 中观看</a></sub></p>
 
 ## 📱 Android 下载
 
