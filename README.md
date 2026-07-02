@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/images/logo.png" alt="梗音效 Logo（占位）" width="120" />
+  <img src="docs/images/logo.jpg" alt="梗音效 Logo" width="120" />
 </p>
 
 <h1 align="center">🔊 梗音效 (meme_soundboard)</h1>
@@ -15,12 +15,13 @@
   <img src="https://img.shields.io/badge/Dart-%5E3.10-0175C2?logo=dart&logoColor=white" alt="Dart SDK">
 </p>
 
-<!-- TODO: 替换为实际演示 GIF 或截图 -->
 <p align="center">
-  <img src="docs/images/demo.gif" alt="应用演示（占位）" width="720" />
+  <video src="docs/images/demo.mp4" width="720" autoplay loop muted playsinline controls>
+    您的浏览器不支持视频播放，请<a href="docs/images/demo.mp4">下载观看</a>。
+  </video>
 </p>
 
-<p align="center"><sub>🎬 ↑ 演示 GIF 占位，待补充 <code>docs/images/demo.gif</code>（或改为静态截图 <code>docs/images/screenshot.png</code>）</sub></p>
+<p align="center"><sub>🎬 应用演示视频</sub></p>
 
 ## 📱 Android 下载
 
@@ -99,7 +100,7 @@ dart run flutter_launcher_icons
 | `lib/services/` | ⚙️ 数据库、音频、导入导出、设置持久化 |
 | `lib/widgets/` | 🧩 音效按钮、搜索栏、`.msb` 导入预览/详情、弹窗等 |
 | `assets/samples/` | 🎁 预制示例 `.msb` 音效包 |
-| `docs/images/` | 🖼️ README 用 Logo / 演示 GIF 占位目录（待补充） |
+| `docs/images/` | 🖼️ README 用 Logo、演示视频等资源 |
 
 ## 📄 许可证
 
