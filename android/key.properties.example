@@ -1,0 +1,7 @@
+# Copy to key.properties and fill in your values.
+# key.properties and *.jks are gitignored — never commit secrets.
+
+storePassword=YOUR_STORE_PASSWORD
+keyPassword=YOUR_KEY_PASSWORD
+keyAlias=meme-soundboard
+storeFile=meme-soundboard-release.jks
