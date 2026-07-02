@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/images/logo.jpg" alt="梗音效 Logo" width="280" />
+  <img src="docs/images/logo.jpg" alt="梗音效 Logo" width="320" style="border-radius: 24px;" />
 </p>
 
 <h1 align="center">🔊 梗音效 (meme_soundboard)</h1>
@@ -16,12 +16,12 @@
 </p>
 
 <p align="center">
-  <video src="https://github.com/liudeihao/meme-soundboard/releases/download/v1.0.1/demo.mp4" width="720" controls muted loop playsinline>
-    您的浏览器不支持视频播放。
-  </video>
+  <a href="https://www.youtube.com/shorts/IPzSDJNfb8I">
+    <img src="https://img.youtube.com/vi/IPzSDJNfb8I/hqdefault.jpg" alt="应用演示视频" width="720" style="border-radius: 16px;" />
+  </a>
 </p>
 
-<p align="center"><sub>🎬 应用演示视频 · <a href="https://github.com/liudeihao/meme-soundboard/blob/master/docs/images/demo.mp4">若无法播放，点此在 GitHub 中观看</a></sub></p>
+<p align="center"><sub>🎬 点击上方缩略图播放演示视频 · <a href="https://www.youtube.com/shorts/IPzSDJNfb8I">YouTube 链接</a></sub></p>
 
 ## 📱 Android 下载
 
@@ -100,7 +100,7 @@ dart run flutter_launcher_icons
 | `lib/services/` | ⚙️ 数据库、音频、导入导出、设置持久化 |
 | `lib/widgets/` | 🧩 音效按钮、搜索栏、`.msb` 导入预览/详情、弹窗等 |
 | `assets/samples/` | 🎁 预制示例 `.msb` 音效包 |
-| `docs/images/` | 🖼️ README 用 Logo、演示视频等资源 |
+| `docs/images/` | 🖼️ README 用 Logo 等资源 |
 
 ## 📄 许可证
 
